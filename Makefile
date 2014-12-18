@@ -15,4 +15,4 @@ debug:
 	$(CC) $(CFLAGS) -outputdir $(BUILDDIR) -o $(BUILDDIR)/$(APPNAME) $(SOURCES)
 
 clean:
-	rm $(BUILDDIR)/*.*
+	rm -r ./$(BUILDDIR)/*
