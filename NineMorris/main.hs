@@ -5,7 +5,7 @@ import NineMorris.Client
 import NineMorris.Globals as Globals
 import Paths_haskell_nm_9morris (version)
 import Data.Version (showVersion)
-import System.Environment -- <= für Command Line Arguments
+import System.Environment -- <= for Command Line Arguments
 
 printHelp :: IO()
 printHelp = putStrLn "Usage: <gameid> (<path to config File>)"
@@ -13,9 +13,9 @@ printHelp = putStrLn "Usage: <gameid> (<path to config File>)"
 main :: IO()
 main = do
     putStrLn $ "Starting Client Version " ++ showVersion version
-    params <- getArgs
-    case params of
-        (gameid:path:xs) -> return $ startClient gameid path
-        (gameid:xs) -> return $ startClient gameid Globals.defaultConfig
-        _ -> do return $ printHelp
+    args <- getArgs
+    case args of
+        (gameid:path:xs) -> startClient gameid path
+        (gameid:xs)      -> startClient gameid Globals.defaultConfig
+        _                -> printHelp
     putStrLn "Stop Client"
