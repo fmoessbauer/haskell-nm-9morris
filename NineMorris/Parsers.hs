@@ -12,20 +12,23 @@ data Product = Hostname String | Port Int | Gamekind String | Test deriving (Sho
 
 productParser :: Parser Product
 productParser =
-     ((string "hostname"    >> return Hostname) *> parseHostname)
- <|> ((string "port" >> return Port) *> parsePort)
- <|> ((string "gamekind"  >> return Gamekind ) *> parseGamekind)
+     ((string "hostname"    >> return Hostname) *> delimParser *> parseHostname)
+ <|> ((string "port" >> return Port) *> delimParser *> parsePort)
+ <|> ((string "gamekind"  >> return Gamekind ) *> delimParser *> parseGamekind)
 
 lineParser :: Parser [Product]
 lineParser = many $ productParser <* endOfLine
 
+delimParser :: Parser ()
+delimParser = skipSpace *> (string "=") *> skipSpace
+
 main :: IO ()
 main = do
-  print $ parseOnly lineParser "port345\r\n"
+  print $ parseOnly lineParser "hostname=Host\nport=345\r\n"
 
 parseHostname :: Parser Product
 parseHostname = do
-    str <- takeText
+    str <- takeWhile1 (not.isEndOfLine)
     return $ Hostname (unpack $ str)
 
 parsePort :: Parser Product
@@ -35,5 +38,5 @@ parsePort = do
 
 parseGamekind :: Parser Product
 parseGamekind = do
-    kind <- takeText
+    kind <- takeWhile1 (not.isEndOfLine)
     return $ Gamekind (unpack $ kind)
