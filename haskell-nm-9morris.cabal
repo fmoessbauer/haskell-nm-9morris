@@ -19,6 +19,10 @@ executable haskell-nm-9morris
   main-is: NineMorris/main.hs             
   -- other-modules:       
   -- other-extensions:    
+<<<<<<< HEAD
   build-depends:       base >=4.6 && <4.8, network
+=======
+  build-depends:       base >=4.6 && <4.8, network, directory
+>>>>>>> felix
   -- hs-source-dirs:      
   default-language:    Haskell2010

@@ -2,10 +2,10 @@
 Main file of the Haskell-NM-9Morris Project
 -}
 import NineMorris.Client
-import NineMorris.Globals as Globals
+import qualified NineMorris.Globals as Globals
 import Paths_haskell_nm_9morris (version)
 import Data.Version (showVersion)
-import System.Environment -- <= for Command Line Arguments
+import System.Environment (getArgs) -- <= für Command Line Arguments
 
 printHelp :: IO()
 printHelp = putStrLn "Usage: <gameid> (<path to config File>)"
