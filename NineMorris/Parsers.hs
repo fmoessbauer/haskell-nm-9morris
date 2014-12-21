@@ -8,13 +8,14 @@ import Data.Text
 import Control.Applicative
 
 data Config = Config {hostname::String, port::Int, gamekind::String} deriving (Show)
-data Product = Hostname String | Port Int | Gamekind String | Test deriving (Show)
+data Product = Hostname String | Port Int | Gamekind String deriving (Show)
 
 productParser :: Parser Product
 productParser =
-     ((string "hostname"    >> return Hostname) *> delimParser *> parseHostname)
- <|> ((string "port" >> return Port) *> delimParser *> parsePort)
- <|> ((string "gamekind"  >> return Gamekind ) *> delimParser *> parseGamekind)
+     commentParser
+ <|> ((string "hostname") *> delimParser *> parseHostname)
+ <|> ((string "port") *> delimParser *> parsePort)
+ <|> ((string "gamekind") *> delimParser *> parseGamekind)
 
 lineParser :: Parser [Product]
 lineParser = many $ productParser <* endOfLine
@@ -22,9 +23,8 @@ lineParser = many $ productParser <* endOfLine
 delimParser :: Parser ()
 delimParser = skipSpace *> (string "=") *> skipSpace
 
-main :: IO ()
-main = do
-  print $ parseOnly lineParser "hostname=Host\nport=345\r\n"
+commentParser :: Parser Product
+commentParser = ((char '#') *> skipWhile (not.isEndOfLine)) *> endOfLine *> productParser
 
 parseHostname :: Parser Product
 parseHostname = do
@@ -40,3 +40,7 @@ parseGamekind :: Parser Product
 parseGamekind = do
     kind <- takeWhile1 (not.isEndOfLine)
     return $ Gamekind (unpack $ kind)
+
+main :: IO ()
+main = do
+  print $ parseOnly lineParser "hostname=Host\n#test\nport=345\r\ngamekind=test\n"
