@@ -12,23 +12,23 @@ data Product = Hostname String | Port Int | Gamekind String deriving (Show)
 
 productParser :: Parser Product
 productParser =
-     commentParser
- <|> ((string "hostname") *> delimParser *> parseHostname)
- <|> ((string "port") *> delimParser *> parsePort)
- <|> ((string "gamekind") *> delimParser *> parseGamekind)
+     commentParser *> productParser                         -- parse comment line
+ <|> ((string "hostname") *> delimParser *> parseHostname)  -- parse hostname
+ <|> ((string "port")     *> delimParser *> parsePort)      -- parse port
+ <|> ((string "gamekind") *> delimParser *> parseGamekind)  -- parse gamekind
 
 lineParser :: Parser [Product]
-lineParser = many $ productParser <* (endOfLine <|> return ())
+lineParser = many $ productParser <* skipSpace <* (commentParser <|> return ()) <* (endOfLine <|> return ()) --endofline or not (eg endoffile)
 
 delimParser :: Parser ()
 delimParser = skipSpace *> (string "=") *> skipSpace
 
-commentParser :: Parser Product
-commentParser = ((char '#') *> skipWhile (not.isEndOfLine)) *> endOfLine *> productParser
+commentParser :: Parser ()
+commentParser = skipSpace *> ((char '#') *> skipWhile (not.isEndOfLine)) *> (endOfLine <|> return ())
 
 parseHostname :: Parser Product
 parseHostname = do
-    str <- takeWhile1 (not.isEndOfLine)
+    str <- takeWhile1 skipRestOfLine
     return $ Hostname (unpack $ str)
 
 parsePort :: Parser Product
@@ -38,9 +38,12 @@ parsePort = do
 
 parseGamekind :: Parser Product
 parseGamekind = do
-    kind <- takeWhile1 (not.isEndOfLine)
+    kind <- takeWhile1 skipRestOfLine
     return $ Gamekind (unpack $ kind)
+
+skipRestOfLine :: Char -> Bool
+skipRestOfLine c = (not $ (isEndOfLine) c || (isHorizontalSpace c || '#' == c))
 
 main :: IO ()
 main = do
-  print $ parseOnly lineParser "hostname=Host\n#test\nport=345\r\ngamekind=test"
+  print $ parseOnly lineParser "hostname=Host\n#test\nport=345 #test\r\ngamekind=test\n#comment"
