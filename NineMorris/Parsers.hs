@@ -18,7 +18,7 @@ productParser =
  <|> ((string "gamekind") *> delimParser *> parseGamekind)
 
 lineParser :: Parser [Product]
-lineParser = many $ productParser <* endOfLine
+lineParser = many $ productParser <* (endOfLine <|> return ())
 
 delimParser :: Parser ()
 delimParser = skipSpace *> (string "=") *> skipSpace
@@ -43,4 +43,4 @@ parseGamekind = do
 
 main :: IO ()
 main = do
-  print $ parseOnly lineParser "hostname=Host\n#test\nport=345\r\ngamekind=test\n"
+  print $ parseOnly lineParser "hostname=Host\n#test\nport=345\r\ngamekind=test"
