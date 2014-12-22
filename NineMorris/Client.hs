@@ -1,13 +1,12 @@
 module NineMorris.Client (startClient) where
 
-import qualified NineMorris.Globals as Globals
+import qualified NineMorris.Globals as G
 import Control.Exception
 import Network.Socket
 import qualified Data.Map as Map
-import NineMorris.Parsers
+import qualified NineMorris.Parsers.Config as ConfigParser
 
 type Gameid = String
-data Config = Config {hostname::String, port::Int, gamekind::String, additionals::(Map.Map String String)} deriving (Show)
 
 startClient :: String -> String -> IO ()
 startClient gid cnf = do
@@ -18,24 +17,18 @@ startClient gid cnf = do
 {-
     opens, handels and closes TCP connection to gameserver
 -}
-performConnection :: Gameid -> Config -> IO ()
+performConnection :: Gameid -> G.Config -> IO ()
 performConnection gid cnf = do
   putStrLn $ "gameid: "++gid++" "++ (show $ cnf)
 
 {-
     Method to parse a config file. Temporarily hardcoded input
 -}
-readConfigFile :: String -> IO Config
+readConfigFile :: String -> IO G.Config
 readConfigFile path = do
-  let conf = Config {
-      hostname      = "sysprak.priv.lab.nm.ifi.lmu.de",
-      port          = 1357,
-      gamekind      = "NMMorris",
-      additionals   = Map.empty 
-    }
-  return $ conf
+  return $ ConfigParser.getConfig "hostname=Host\n#test\nport=345 #test\r\ngamekind=test\n#comment\nkey=value\n"
 
 verifyGameId :: String -> Gameid
-verifyGameId gid = if (length $ gid) == Globals.gameIdLength
+verifyGameId gid = if (length $ gid) == G.gameIdLength
                       then gid
-                      else throw Globals.GameIdNotValid
+                      else throw G.GameIdNotValid

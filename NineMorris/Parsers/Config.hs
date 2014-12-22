@@ -1,15 +1,14 @@
 {-# LANGUAGE OverloadedStrings #-}
 {- Standalone parser implementation -}
-module NineMorris.Parsers.Config where
+module NineMorris.Parsers.Config (getConfig) where
 
---import NineMorris.Globals as Globals
+import qualified NineMorris.Globals as G
 import Data.Attoparsec.Text
-import Data.Text (unpack)
+import Data.Text (pack, unpack)
 import Data.List as List
 import Control.Applicative
 
 type Store = (String,String)
-data Config = Config {hostname::String, port::Int, gamekind::String} deriving (Show)
 
 productParser :: Parser Store
 productParser =
@@ -30,23 +29,27 @@ skipRestOfLine c = (not $ (isEndOfLine) c || (isHorizontalSpace c || '#' == c))
 
 parseKeyValue :: Parser Store
 parseKeyValue = do
+  skipSpace
   key <- takeWhile1 (not.(\c -> c=='#' || c=='=' || isHorizontalSpace c ))
   delimParser
   value <- takeWhile1 skipRestOfLine
   return $ ((unpack $ key),(unpack $ value))
   
-createConfig :: (Either String [Store]) -> Config
-createConfig (Right store) = Config {
-                               hostname = getValue "hostname" store,
-                               port     = read $ getValue "port" store,
-                               gamekind = getValue "hostname" store
+createConfig :: (Either String [Store]) -> G.Config
+createConfig (Right store) = G.Config {
+                               G.hostname = getValue "hostname",
+                               G.port     = read $ getValue "port",
+                               G.gamekind = getValue "gamekind"
                              }
   where
-    getValue key list = case List.lookup key list of
+    getValue key = case List.lookup key store of
                              (Just a) -> a
                              Nothing  -> undefined
 createConfig (Left _) = undefined --throw Globals.ConfigNotValid
 
-main :: IO ()
-main = do
-  print $ createConfig $ parseOnly lineParser "hostname=Host\n#test\nport=345 #test\r\ngamekind=test\n#comment\nkey=value\n"
+getConfig :: String -> G.Config
+getConfig content = createConfig $ parseOnly lineParser (pack $ content)
+
+--main :: IO ()
+--main = do
+--  print $ createConfig $ parseOnly lineParser "hostname=Host\n#test\nport=345 #test\r\ngamekind=test\n#comment\nkey=value\n"

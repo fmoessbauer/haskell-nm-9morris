@@ -7,6 +7,8 @@ import Data.Typeable
 defaultConfig   = "config.ini"  :: String
 gameIdLength    = 11            :: Int
 
+data Config = Config {hostname::String, port::Int, gamekind::String} deriving (Show)
+
 {- Game Excemptions -}
 data MorrisException = GameIdNotValid | FileNotFound | ConfigNotValid
     deriving (Show, Typeable)

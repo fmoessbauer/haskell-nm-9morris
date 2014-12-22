@@ -2,7 +2,7 @@
 Main file of the Haskell-NM-9Morris Project
 -}
 import NineMorris.Client
-import qualified NineMorris.Globals as Globals
+import qualified NineMorris.Globals as G
 import Paths_haskell_nm_9morris (version)
 import Data.Version (showVersion)
 import System.Environment (getArgs) -- <= für Command Line Arguments
@@ -16,6 +16,6 @@ main = do
     args <- getArgs
     case args of
         (gameid:path:xs) -> startClient gameid path
-        (gameid:xs)      -> startClient gameid Globals.defaultConfig
+        (gameid:xs)      -> startClient gameid G.defaultConfig
         _                -> printHelp
     putStrLn "Stop Client"
