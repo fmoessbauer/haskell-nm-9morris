@@ -3,9 +3,11 @@ module NineMorris.Client (startClient) where
 import qualified NineMorris.Globals as Globals
 import Control.Exception
 import Network.Socket
+import qualified Data.Map as Map
+import NineMorris.Parsers
 
 type Gameid = String
-data Config = Config {hostname::String, port::Int, gamekind::String} deriving (Show)
+data Config = Config {hostname::String, port::Int, gamekind::String, additionals::(Map.Map String String)} deriving (Show)
 
 startClient :: String -> String -> IO ()
 startClient gid cnf = do
@@ -26,9 +28,10 @@ performConnection gid cnf = do
 readConfigFile :: String -> IO Config
 readConfigFile path = do
   let conf = Config {
-      hostname  = "sysprak.priv.lab.nm.ifi.lmu.de",
-      port      = 1357,
-      gamekind  = "NMMorris"
+      hostname      = "sysprak.priv.lab.nm.ifi.lmu.de",
+      port          = 1357,
+      gamekind      = "NMMorris",
+      additionals   = Map.empty 
     }
   return $ conf
 
