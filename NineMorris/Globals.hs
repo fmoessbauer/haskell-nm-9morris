@@ -8,7 +8,7 @@ defaultConfig   = "config.ini"  :: String
 gameIdLength    = 11            :: Int
 
 {- Game Excemptions -}
-data MorrisException = GameIdNotValid | FileNotFound
+data MorrisException = GameIdNotValid | FileNotFound | ConfigNotValid
     deriving (Show, Typeable)
 
 instance Exception MorrisException
