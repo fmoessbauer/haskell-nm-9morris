@@ -47,11 +47,11 @@ skipRestOfLine c = (not $ (isEndOfLine) c || (isHorizontalSpace c || '#' == c))
 
 parseKeyValue :: Parser Product
 parseKeyValue = do
-  key <- takeWhile1 (not.(\c -> c=='#' || isHorizontalSpace c))
+  key <- takeWhile1 (not.(\c -> c=='#' || c=='=' || isHorizontalSpace c ))
   delimParser
   value <- takeWhile1 skipRestOfLine
   return $ Undef (unpack $ key) (unpack $ value)
 
 main :: IO ()
 main = do
-  print $ parseOnly lineParser "hostname=Host\n#test\nport=345 #test\r\ngamekind=test\n#comment"
+  print $ parseOnly lineParser "hostname=Host\n#test\nport=345 #test\r\ngamekind=test\n#comment\nkey=value\n"
