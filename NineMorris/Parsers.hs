@@ -8,7 +8,7 @@ import Data.Text
 import Control.Applicative
 
 data Config = Config {hostname::String, port::Int, gamekind::String} deriving (Show)
-data Product = Hostname String | Port Int | Gamekind | Undef String deriving (Show)
+data Product = Hostname String | Port Int | Gamekind String | Undef String String deriving (Show)
 
 productParser :: Parser Product
 productParser =
@@ -16,7 +16,7 @@ productParser =
  <|> ((string "hostname") *> delimParser *> parseHostname)  -- parse hostname
  <|> ((string "port")     *> delimParser *> parsePort)      -- parse port
  <|> ((string "gamekind") *> delimParser *> parseGamekind)  -- parse gamekind
- --<|> (takeWhile1 (\c -> c=='#')) *> delimParser *> (return Undef)
+ <|> parseKeyValue
 
 lineParser :: Parser [Product]
 lineParser = many $ productParser <* skipSpace <* (commentParser <|> return ()) <* (endOfLine <|> return ()) --endofline or not (eg endoffile)
@@ -29,7 +29,7 @@ commentParser = skipSpace *> ((char '#') *> skipWhile (not.isEndOfLine)) *> (end
 
 parseHostname :: Parser Product
 parseHostname = do
-    str <- takeWhile1 skipRestOfLine
+    str <- (takeWhile1 skipRestOfLine)
     return $ Hostname (unpack $ str)
 
 parsePort :: Parser Product
@@ -44,6 +44,13 @@ parseGamekind = do
 
 skipRestOfLine :: Char -> Bool
 skipRestOfLine c = (not $ (isEndOfLine) c || (isHorizontalSpace c || '#' == c))
+
+parseKeyValue :: Parser Product
+parseKeyValue = do
+  key <- takeWhile1 (not.(\c -> c=='#' || isHorizontalSpace c))
+  delimParser
+  value <- takeWhile1 skipRestOfLine
+  return $ Undef (unpack $ key) (unpack $ value)
 
 main :: IO ()
 main = do
