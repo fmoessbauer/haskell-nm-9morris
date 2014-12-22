@@ -26,7 +26,8 @@ performConnection gid cnf = do
 -}
 readConfigFile :: String -> IO G.Config
 readConfigFile path = do
-  return $ ConfigParser.getConfig "hostname=Host\n#test\nport=345 #test\r\ngamekind=test\n#comment\nkey=value\n"
+  content <- readFile path
+  return $ ConfigParser.getConfig content
 
 verifyGameId :: String -> Gameid
 verifyGameId gid = if (length $ gid) == G.gameIdLength
