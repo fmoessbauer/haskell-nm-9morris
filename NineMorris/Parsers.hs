@@ -8,7 +8,7 @@ import Data.Text
 import Control.Applicative
 
 data Config = Config {hostname::String, port::Int, gamekind::String} deriving (Show)
-data Product = Hostname String | Port Int | Gamekind String deriving (Show)
+data Product = Hostname String | Port Int | Gamekind | Undef String deriving (Show)
 
 productParser :: Parser Product
 productParser =
@@ -16,6 +16,7 @@ productParser =
  <|> ((string "hostname") *> delimParser *> parseHostname)  -- parse hostname
  <|> ((string "port")     *> delimParser *> parsePort)      -- parse port
  <|> ((string "gamekind") *> delimParser *> parseGamekind)  -- parse gamekind
+ --<|> (takeWhile1 (\c -> c=='#')) *> delimParser *> (return Undef)
 
 lineParser :: Parser [Product]
 lineParser = many $ productParser <* skipSpace <* (commentParser <|> return ()) <* (endOfLine <|> return ()) --endofline or not (eg endoffile)
