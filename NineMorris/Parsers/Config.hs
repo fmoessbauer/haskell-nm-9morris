@@ -7,6 +7,7 @@ import Data.Attoparsec.Text
 import Data.Text (pack, unpack)
 import Data.List as List
 import Control.Applicative
+import Control.Exception
 
 type Store = (String,String)
 
@@ -44,8 +45,8 @@ createConfig (Right store) = G.Config {
   where
     getValue key = case List.lookup key store of
                              (Just a) -> a
-                             Nothing  -> undefined
-createConfig (Left _) = undefined --throw Globals.ConfigNotValid
+                             Nothing  -> throw $ G.ConfigNotValid (key++" missing")
+createConfig (Left _) = throw $ G.ConfigNotValid "parse error"
 
 getConfig :: String -> G.Config
 getConfig content = createConfig $ parseOnly lineParser (pack $ content)

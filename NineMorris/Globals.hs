@@ -10,7 +10,7 @@ gameIdLength    = 11            :: Int
 data Config = Config {hostname::String, port::Int, gamekind::String} deriving (Show)
 
 {- Game Excemptions -}
-data MorrisException = GameIdNotValid | FileNotFound | ConfigNotValid
+data MorrisException = GameIdNotValid | FileNotFound | ConfigNotValid String
     deriving (Show, Typeable)
 
 instance Exception MorrisException
