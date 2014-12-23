@@ -7,6 +7,7 @@ import Data.Attoparsec.Text
 import Data.Text (unpack)
 import Data.List as List
 import Control.Applicative
+import Control.Exception
 
 type Store = (String,String)
 data Config = Config {hostname::String, port::Int, gamekind::String} deriving (Show)
@@ -44,8 +45,8 @@ createConfig (Right store) = Config {
   where
     getValue key list = case List.lookup key list of
                              (Just a) -> a
-                             Nothing  -> undefined
-createConfig (Left _) = undefined --throw Globals.ConfigNotValid
+                             Nothing  -> throw $ G.ConfigNotValid (key++" missing")
+createConfig (Left _) = throw $ G.ConfigNotValid "parse error"
 
 main :: IO ()
 main = do
