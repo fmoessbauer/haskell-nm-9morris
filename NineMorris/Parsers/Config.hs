@@ -4,12 +4,12 @@ module NineMorris.Parsers.Config (getConfig) where
 
 import qualified NineMorris.Globals as G
 import Data.Attoparsec.Text
-import Data.Text (pack, unpack)
+import Data.Text (Text, pack, unpack, append)
 import Data.List as List
 import Control.Applicative
 import Control.Exception
 
-type Store = (String,String)
+type Store = (Text,Text)
 
 productParser :: Parser Store
 productParser =
@@ -34,18 +34,19 @@ parseKeyValue = do
   key <- takeWhile1 (not.(\c -> c=='#' || c=='=' || isHorizontalSpace c ))
   delimParser
   value <- takeWhile1 skipRestOfLine
-  return $ ((unpack $ key),(unpack $ value))
+  return $ (key,value)
   
 createConfig :: (Either String [Store]) -> G.Config
 createConfig (Right store) = G.Config {
                                G.hostname = getValue "hostname",
-                               G.port     = read $ getValue "port",
+                               G.port     = read $ unpack $ getValue "port",
                                G.gamekind = getValue "gamekind"
                              }
   where
+    getValue :: Text -> Text
     getValue key = case List.lookup key store of
                              (Just a) -> a
-                             Nothing  -> throw $ G.ConfigNotValid (key++" missing")
+                             Nothing  -> throw $ G.ConfigNotValid (key `append` " missing")
 createConfig (Left _) = throw $ G.ConfigNotValid "parse error"
 
 getConfig :: String -> G.Config
