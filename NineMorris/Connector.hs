@@ -40,6 +40,7 @@ performConnection gid cnf@G.Config{G.hostname=hostname, G.port=port, G.gamekind=
 handleProtocol :: G.Gameid -> Text ->Handle -> IO ()
 handleProtocol gid gkind hdl = do
     handleProlog gid gkind hdl
+    handleGamePhase hdl
     return ()
 
 handleProlog :: G.Gameid -> Text -> Handle -> IO ()
@@ -67,12 +68,26 @@ handleProlog gid gkind hdl = do
     -- get player info
     getDebugLine hdl
     total <- getDebugLine hdl >>= (\str -> return $ parseTotalPlayer str)
+    -- todo: check positiv response
     players <- replicateM (total-1) (getDebugLine hdl >>= (\str -> return $ parsePlayerInfo str))
     putStrLn $ show $ players
 
     -- recieve endplayers string
     getDebugLine hdl >>= parseEndplayers
 
+handleGamePhase :: Handle -> IO ()
+handleGamePhase hdl = do
+    line <-idleResponse hdl
+    return ()
+
+
+-- if idle then respond else return line
+idleResponse :: Handle -> IO Text
+idleResponse hdl = do
+    line <- getDebugLine hdl
+    if (line == "+ WAIT")
+        then (putDebugStrLn hdl "OKWAIT") >> idleResponse hdl
+        else return line
 
 parseClientVersOk :: Text -> IO ()
 parseClientVersOk str = if str == "+ Client version accepted - please send Game-ID to join"
