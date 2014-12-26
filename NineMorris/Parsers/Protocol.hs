@@ -6,7 +6,11 @@ module NineMorris.Parsers.Protocol (
   parseGameName,
   parseTotalPlayer,
   parsePlayerInfo,
-  parseGPSwitch)
+  parseGPSwitch,
+  parseMoveCapture,
+  parseStatic,
+  parseMovePieces,
+  parseMoveStoneData)
 where
 
 import qualified NineMorris.Globals as G
@@ -72,7 +76,39 @@ parserGPSwitch =
 parseGPSwitch :: Text -> G.GamePhase
 parseGPSwitch str = normalizedParse $ parseOnly parserGPSwitch str
 
+{- move phase parsers -}
+parseMoveCapture :: Text -> Int
+parseMoveCapture str = normalizedParse $ parseOnly ((string "+ CAPTURE ") *> (decimal)) str
+
+parserMovePieces :: Parser (Int,Int)
+parserMovePieces = do
+    string "+ PIECELIST "
+    players <- decimal
+    char ','
+    stones <- decimal
+    return $ (players, stones)
+
+parseMovePieces :: Text -> (Int,Int)
+parseMovePieces str = normalizedParse $ parseOnly parserMovePieces str
+
+parserMoveStoneData :: Parser G.StoneInfo
+parserMoveStoneData = do
+    string "+ PIECE"
+    pnr <- decimal
+    char '.'
+    stone <- decimal
+    skipSpace
+    pos <- takeWhile1 (not.isHorizontalSpace)
+    -- todo: translate to internal coordinates
+    return G.StoneInfo {G.spid=pnr, G.snumber=stone, G.sposition=pos}
+
+parseMoveStoneData :: Text -> G.StoneInfo
+parseMoveStoneData str = normalizedParse $ parseOnly parserMoveStoneData str
+{- end move phase parsers-}
+
+parseStatic :: Text -> Text -> IO ()
+parseStatic expected str = (return $ (normalizedParse $ parseOnly (string expected) str)) >> return () -- bad implemenation
 
 normalizedParse :: Either String a -> a
 normalizedParse (Right a) = a
-normalizedParse (Left _)  = undefined 
+normalizedParse (Left _)  = throw G.InternalParserError 

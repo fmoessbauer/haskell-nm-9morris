@@ -76,18 +76,26 @@ handleProlog gid gkind hdl = do
     getDebugLine hdl >>= parseEndplayers
 
 handleGamePhase :: Handle -> IO ()
-handleGamePhase hdl = do
+handleGamePhase hdl = forever $ do
     line <- getDebugLine hdl
     case parseGPSwitch $ line of
-        G.GP_WAIT        -> putDebugStrLn hdl "OKWAIT"
-        G.GP_MOVE time   -> movePhase hdl time
-        G.GP_GAMEOVER _  -> gameOver hdl Nothing
-    return ()
+        G.GP_WAIT          -> putDebugStrLn hdl "OKWAIT"
+        G.GP_MOVE time     -> movePhase hdl time
+        G.GP_GAMEOVER dat  -> gameOver hdl dat
 
 movePhase :: Handle -> Int -> IO ()
-movePhase = undefined
+movePhase hdl time = do
+    capture <- getDebugLine hdl >>= (\str -> return $ parseMoveCapture str)
+    (cntPlayer, cntStones)  <- getDebugLine hdl >>= (\str -> return $ parseMovePieces str)
+    pieces <- replicateM (cntPlayer*cntStones) (getDebugLine hdl >>= (\str -> return $ parseMoveStoneData str))
+    --putStrLn $ show $ pieces
+    getDebugLine hdl >>= parseStatic "+ ENDPIECELIST"
+    putDebugStrLn hdl "THINKING"
+    getDebugLine hdl >>= parseStatic "+ OKTHINK"
+    -- Play useless
+    return ()
 
-gameOver :: Handle -> (Maybe (Int,String)) -> IO ()
+gameOver :: Handle -> (Maybe (Int,Text)) -> IO ()
 gameOver = undefined
 
 -- if idle then respond else return line
@@ -111,7 +119,7 @@ parseGamekindOk str gkind =
         else throw $ G.ProtocolError ("Gamekind not valid: " `append` gamekind)
 
 parseEndplayers :: Text -> IO ()
-parseEndplayers str = if str == "+ ENDPLAYERS"
+parseEndplayers str = if str == "+ ENDPLAYERS" -- todo switch to parseStatic
     then return ()
     else throw $ G.ProtocolError ("ENDPLAYERS expected, but: " `append` str)
 getDebugLine :: Handle -> IO Text
@@ -122,6 +130,6 @@ getDebugLine hdl = do
 
 putDebugStrLn :: Handle -> Text -> IO ()
 putDebugStrLn hdl str = do
-    putStrLn $ "DEBUG: "++(unpack $ str)
     TextIO.hPutStrLn hdl str
+    putStrLn $ "DEBUG: "++(unpack $ str)
     return ()
