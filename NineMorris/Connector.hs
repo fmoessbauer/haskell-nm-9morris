@@ -77,9 +77,18 @@ handleProlog gid gkind hdl = do
 
 handleGamePhase :: Handle -> IO ()
 handleGamePhase hdl = do
-    line <-idleResponse hdl
+    line <- getDebugLine hdl
+    case parseGPSwitch $ line of
+        G.GP_WAIT        -> putDebugStrLn hdl "OKWAIT"
+        G.GP_MOVE time   -> movePhase hdl time
+        G.GP_GAMEOVER _  -> gameOver hdl Nothing
     return ()
 
+movePhase :: Handle -> Int -> IO ()
+movePhase = undefined
+
+gameOver :: Handle -> (Maybe (Int,String)) -> IO ()
+gameOver = undefined
 
 -- if idle then respond else return line
 idleResponse :: Handle -> IO Text

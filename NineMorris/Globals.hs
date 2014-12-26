@@ -15,6 +15,7 @@ playerNumber    = "1"           :: Text
 data Config = Config {hostname::Text, port::Int, gamekind::Text} deriving (Show)
 data PlayerInfo = PlayerInfo {pid::Int, pname::Text, pstatus::PlayerStatus} deriving (Show)
 data PlayerStatus = READY | NOT_READY deriving (Show)
+data GamePhase = GP_WAIT | GP_MOVE Int | GP_GAMEOVER (Maybe (Int, Text))
 type Gameid = String
 
 {- Game Excemptions -}

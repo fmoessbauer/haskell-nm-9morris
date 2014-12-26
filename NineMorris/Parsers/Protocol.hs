@@ -5,7 +5,8 @@ module NineMorris.Parsers.Protocol (
   parseGamekind,
   parseGameName,
   parseTotalPlayer,
-  parsePlayerInfo)
+  parsePlayerInfo,
+  parseGPSwitch)
 where
 
 import qualified NineMorris.Globals as G
@@ -61,6 +62,15 @@ parsePlayerInfo str = let (nr, name) = normalizedParse $ parseOnly parserPlayerI
         then G.READY
         else G.NOT_READY
     }
+
+parserGPSwitch :: Parser G.GamePhase
+parserGPSwitch = 
+  ((string "+ WAIT") *> (return $ G.GP_WAIT))
+  <|> ((string "+ MOVE ") *> (decimal >>= (\nr -> return $ G.GP_MOVE nr)))
+  <|> ((string "+ GAMEOVER") *> skipSpace *> (return $ G.GP_GAMEOVER Nothing))
+
+parseGPSwitch :: Text -> G.GamePhase
+parseGPSwitch str = normalizedParse $ parseOnly parserGPSwitch str
 
 
 normalizedParse :: Either String a -> a
