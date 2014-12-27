@@ -6,6 +6,7 @@ import Network.Socket
 import System.IO
 import Control.Exception
 import Control.Monad
+import System.Exit (exitWith, ExitCode(..))
 import Data.Text (Text,pack,unpack,append)
 import qualified Data.Text.IO as TextIO
 import NineMorris.Parsers.Protocol
@@ -93,10 +94,27 @@ movePhase hdl time = do
     putDebugStrLn hdl "THINKING"
     getDebugLine hdl >>= parseStatic "+ OKTHINK"
     -- Play useless
+    -- calculate move
+    --  BIG TODO
+    --
+    move <- return $ "A1"
+    putDebugStrLn hdl ("PLAY " `append` move)
+    getDebugLine hdl >>= parseStatic "+ MOVEOK"
     return ()
 
 gameOver :: Handle -> (Maybe (Int,Text)) -> IO ()
-gameOver = undefined
+gameOver hdl _ = do
+    -- remove duplicate code TODO
+    capture <- getDebugLine hdl >>= (\str -> return $ parseMoveCapture str)
+    (cntPlayer, cntStones)  <- getDebugLine hdl >>= (\str -> return $ parseMovePieces str)
+    pieces <- replicateM (cntPlayer*cntStones) (getDebugLine hdl >>= (\str -> return $ parseMoveStoneData str))
+    getDebugLine hdl >>= parseStatic "+ ENDPIECELIST"
+    getDebugLine hdl >>= parseStatic "+ QUIT"
+    --
+    hClose hdl
+    exitWith ExitSuccess
+    -- TODO : safe exit
+
 
 -- if idle then respond else return line
 idleResponse :: Handle -> IO Text
