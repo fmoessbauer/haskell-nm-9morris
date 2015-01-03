@@ -22,3 +22,4 @@ executable haskell-nm-9morris
   build-depends:       base >=4.6 && <4.8, network, directory, text, attoparsec, containers
   -- hs-source-dirs:      
   default-language:    Haskell2010
+  ghc-options:         -Wall -auto-all -caf-all -rtsopts

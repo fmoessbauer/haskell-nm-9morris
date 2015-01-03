@@ -2,7 +2,7 @@ module NineMorris.Client (startClient) where
 
 import qualified NineMorris.Globals as G
 import Control.Exception
-import qualified Data.Map as Map
+import Data.Map()
 import qualified NineMorris.Parsers.Config as ConfigParser
 import NineMorris.Connector
 

@@ -6,6 +6,7 @@ import Network.Socket
 import System.IO
 import Control.Exception
 import Control.Monad
+import Control.Monad.Fix (fix)
 import System.Exit (exitWith, ExitCode(..))
 import Data.Text (Text,pack,unpack,append)
 import qualified Data.Text.IO as TextIO
@@ -77,14 +78,15 @@ handleProlog gid gkind hdl = do
     getDebugLine hdl >>= parseEndplayers
 
 handleGamePhase :: Handle -> IO ()
-handleGamePhase hdl = forever $ do
+handleGamePhase hdl = fix $ \loop -> do
     line <- getDebugLine hdl
-    case parseGPSwitch $ line of
-        G.GP_WAIT          -> putDebugStrLn hdl "OKWAIT"
+    ret <- case parseGPSwitch $ line of
+        G.GP_WAIT          -> putDebugStrLn hdl "OKWAIT" >> return True
         G.GP_MOVE time     -> movePhase hdl time
         G.GP_GAMEOVER dat  -> gameOver hdl dat
+    if ret then loop else return ()
 
-movePhase :: Handle -> Int -> IO ()
+movePhase :: Handle -> Int -> IO Bool
 movePhase hdl time = do
     capture <- getDebugLine hdl >>= (\str -> return $ parseMoveCapture str)
     (cntPlayer, cntStones)  <- getDebugLine hdl >>= (\str -> return $ parseMovePieces str)
@@ -100,9 +102,9 @@ movePhase hdl time = do
     move <- return $ "A1"
     putDebugStrLn hdl ("PLAY " `append` move)
     getDebugLine hdl >>= parseStatic "+ MOVEOK"
-    return ()
+    return True
 
-gameOver :: Handle -> (Maybe (Int,Text)) -> IO ()
+gameOver :: Handle -> (Maybe (Int,Text)) -> IO Bool
 gameOver hdl _ = do
     -- remove duplicate code TODO
     capture <- getDebugLine hdl >>= (\str -> return $ parseMoveCapture str)
@@ -112,8 +114,8 @@ gameOver hdl _ = do
     getDebugLine hdl >>= parseStatic "+ QUIT"
     --
     hClose hdl
-    exitWith ExitSuccess
-    -- TODO : safe exit
+    --exitWith ExitSuccess
+    return False
 
 
 -- if idle then respond else return line
@@ -140,6 +142,7 @@ parseEndplayers :: Text -> IO ()
 parseEndplayers str = if str == "+ ENDPLAYERS" -- todo switch to parseStatic
     then return ()
     else throw $ G.ProtocolError ("ENDPLAYERS expected, but: " `append` str)
+
 getDebugLine :: Handle -> IO Text
 getDebugLine hdl = do
     line <- TextIO.hGetLine hdl

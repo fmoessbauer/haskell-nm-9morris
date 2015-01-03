@@ -15,7 +15,7 @@ where
 
 import qualified NineMorris.Globals as G
 import Data.Attoparsec.Text
-import Data.Text (pack, unpack, take, drop, length, last, Text) 
+import Data.Text (unpack, take, drop, length, last, Text) 
 import Control.Applicative
 import Control.Exception
 
@@ -107,8 +107,9 @@ parseMoveStoneData str = normalizedParse $ parseOnly parserMoveStoneData str
 {- end move phase parsers-}
 
 parseStatic :: Text -> Text -> IO ()
-parseStatic expected str = (return $ (normalizedParse $ parseOnly (string expected) str)) >> return () -- bad implemenation
+parseStatic expected str = if expected == str then return () else throw $ G.InternalParserError ("No Parse: " ++ (unpack $ str))
+--(return $ (normalizedParse $ parseOnly (string expected) str)) >> return () -- bad implemenation
 
 normalizedParse :: Either String a -> a
 normalizedParse (Right a) = a
-normalizedParse (Left _)  = throw G.InternalParserError 
+normalizedParse (Left str)  = throw $ G.InternalParserError str

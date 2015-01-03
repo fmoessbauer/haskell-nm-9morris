@@ -20,7 +20,7 @@ data GamePhase      = GP_WAIT | GP_MOVE Int | GP_GAMEOVER (Maybe (Int, Text))
 type Gameid         = String
 
 {- Game Excemptions -}
-data MorrisException = GameIdNotValid | FileNotFound | ConfigNotValid Text | ProtocolError Text | InternalParserError
+data MorrisException = GameIdNotValid | FileNotFound | ConfigNotValid Text | ProtocolError Text | InternalParserError String
     deriving (Show, Typeable)
 
 instance Exception MorrisException

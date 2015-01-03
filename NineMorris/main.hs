@@ -17,7 +17,7 @@ main = do
     putStrLn $ "Starting Client Version " ++ showVersion version
     args <- getArgs
     case args of
-        (gameid:path:xs) -> startClient gameid path
-        (gameid:xs)      -> startClient gameid G.defaultConfig
+        (gameid:path:_) -> startClient gameid path
+        (gameid:_)      -> startClient gameid G.defaultConfig
         _                -> printHelp
     putStrLn "Stop Client"
