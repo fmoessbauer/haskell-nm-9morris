@@ -6,6 +6,7 @@ module NineMorris.Parsers.Protocol (
   parseGameName,
   parseTotalPlayer,
   parsePlayerInfo,
+  parseMePlayerInfo,
   parseGPSwitch,
   parseMoveCapture,
   parseStatic,
@@ -55,6 +56,18 @@ parserPlayerInfo = do
     pname <- takeText
     return $ (pnr, pname)
 
+parserMePlayerInfo :: Parser G.PlayerInfo
+parserMePlayerInfo = do
+  string "+ YOU"
+  skipSpace
+  pid <- decimal
+  pname <- takeText
+  return $ G.PlayerInfo{
+        G.pid     = pid,
+        G.pname   = pname,
+        G.pstatus = G.READY
+      }
+
 -- very bad implemenation
 -- TODO!!
 parsePlayerInfo :: Text -> G.PlayerInfo
@@ -66,6 +79,9 @@ parsePlayerInfo str = let (nr, name) = normalizedParse $ parseOnly parserPlayerI
         then G.READY
         else G.NOT_READY
     }
+
+parseMePlayerInfo :: Text -> G.PlayerInfo
+parseMePlayerInfo str = normalizedParse $ parseOnly parserMePlayerInfo str
 
 parserGPSwitch :: Parser G.GamePhase
 parserGPSwitch = 

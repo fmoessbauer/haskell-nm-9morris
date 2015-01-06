@@ -13,6 +13,9 @@ import qualified Data.Text.IO as TextIO
 import NineMorris.Parsers.Protocol
 import qualified NineMorris.AI as AI
 
+import Data.Word (Word64)
+import qualified Data.Map as Map
+
 performConnection :: G.Gameid -> G.Config -> IO ()
 performConnection gid cnf@G.Config{G.hostname=hostname, G.port=port, G.gamekind=gamekind} = do
     -- debug
@@ -42,11 +45,11 @@ performConnection gid cnf@G.Config{G.hostname=hostname, G.port=port, G.gamekind=
 
 handleProtocol :: G.Gameid -> Text ->Handle -> IO ()
 handleProtocol gid gkind hdl = do
-    handleProlog gid gkind hdl
-    handleGamePhase hdl
+    player <- handleProlog gid gkind hdl
+    handleGamePhase hdl player
     return ()
 
-handleProlog :: G.Gameid -> Text -> Handle -> IO ()
+handleProlog :: G.Gameid -> Text -> Handle -> IO G.PlayerInfo
 handleProlog gid gkind hdl = do
     line <- getDebugLine hdl
     let vers = parseWelcome line
@@ -69,7 +72,8 @@ handleProlog gid gkind hdl = do
     putDebugStrLn hdl $ "PLAYER " `append` G.playerNumber
 
     -- get player info
-    getDebugLine hdl
+    mePlayer <- getDebugLine hdl >>= (\str -> return $ parseMePlayerInfo str)
+
     total <- getDebugLine hdl >>= (\str -> return $ parseTotalPlayer str)
     -- todo: check positiv response
     players <- replicateM (total-1) (getDebugLine hdl >>= (\str -> return $ parsePlayerInfo str))
@@ -78,21 +82,28 @@ handleProlog gid gkind hdl = do
     -- recieve endplayers string
     getDebugLine hdl >>= parseEndplayers
 
-handleGamePhase :: Handle -> IO ()
-handleGamePhase hdl = fix $ \loop -> do
+    putStrLn $ show $ mePlayer
+    return $ mePlayer
+
+handleGamePhase :: Handle -> G.PlayerInfo -> IO ()
+handleGamePhase hdl player = fix $ \loop -> do
     line <- getDebugLine hdl
     ret <- case parseGPSwitch $ line of
         G.GP_WAIT          -> putDebugStrLn hdl "OKWAIT" >> return True
-        G.GP_MOVE time     -> movePhase hdl time
+        G.GP_MOVE time     -> movePhase hdl player time
         G.GP_GAMEOVER dat  -> gameOver hdl dat
     if ret then loop else return ()
 
-movePhase :: Handle -> Int -> IO Bool
-movePhase hdl time = do
+movePhase :: Handle -> G.PlayerInfo -> Int -> IO Bool
+movePhase hdl player time = do
     capture <- getDebugLine hdl >>= (\str -> return $ parseMoveCapture str)
     (cntPlayer, cntStones)  <- getDebugLine hdl >>= (\str -> return $ parseMovePieces str)
     pieces <- replicateM (cntPlayer*cntStones) (getDebugLine hdl >>= (\str -> return $ parseMoveStoneData str))
-    --putStrLn $ show $ pieces
+    putStrLn $ show $ pieces
+
+    let board = convertBoard player pieces
+    putStrLn $ show $ board
+
     getDebugLine hdl >>= parseStatic "+ ENDPIECELIST"
     putDebugStrLn hdl "THINKING"
     getDebugLine hdl >>= parseStatic "+ OKTHINK"
@@ -100,7 +111,10 @@ movePhase hdl time = do
     -- calculate move
     --  BIG TODO
     --
-    move <- return $ "A1"
+    let intMove = AI.aiMove G.searchDepth Map.empty board
+    putStrLn $ show $ intMove
+
+    move <- return $ convertMove $ intMove
     putDebugStrLn hdl ("PLAY " `append` move)
     getDebugLine hdl >>= parseStatic "+ MOVEOK"
     return True
@@ -144,24 +158,39 @@ parseEndplayers str = if str == "+ ENDPLAYERS" -- todo switch to parseStatic
     then return ()
     else throw $ G.ProtocolError ("ENDPLAYERS expected, but: " `append` str)
 
-convertMove :: AI.Move -> Text
-convertMove AI.FullMove { AI.fstAction=fst, AI.sndAction=snd} = 
+convertMove :: Maybe AI.Move -> Text
+convertMove Nothing = throw G.AiException
+convertMove (Just AI.FullMove { AI.fstAction=fst, AI.sndAction=snd}) = 
     let
         partOne = convertFirstAction fst
         partTwo = case snd of
                     Nothing     -> ""
-                    (Just act)  -> convertSecondAction act
+                    (Just act)  -> ";" `append` convertSecondAction act
     in partOne `append` partTwo
 
 convertFirstAction :: AI.FirstAction -> Text
-convertFirstAction (AI.Place pos)     = "A1"
-convertFirstAction (AI.Move old new)  = "B1:A1"
+convertFirstAction (AI.Place pos)     = (convertToServerPos $ pos)
+convertFirstAction (AI.Move old new)  = (convertToServerPos $ old) `append` ":" `append` (convertToServerPos $ new)
 
 convertSecondAction :: AI.SecondAction -> Text
-convertSecondAction (AI.Take pos) = "A1" 
+convertSecondAction (AI.Take pos) = convertToServerPos pos
 
-convertPositions :: AI.Position -> Text
-convertPositions (AI.Position pos) = "A"
+convertToInternalPos :: Text -> AI.Position
+convertToInternalPos pos =  AI.Position (Map.findWithDefault (-1) pos G.toAiPositions)
+
+convertToServerPos :: AI.Position -> Text
+convertToServerPos (AI.Position pos) = Map.findWithDefault "" pos G.toServerPositions
+
+
+convertBoard :: G.PlayerInfo -> [G.StoneInfo] -> AI.Board
+convertBoard player stones = foldl (convertSingleStone $ player) (AI.newBoard) stones
+
+{- I am Red -}
+convertSingleStone :: G.PlayerInfo -> AI.Board -> G.StoneInfo -> AI.Board
+convertSingleStone (G.PlayerInfo {G.pid=pid}) (board) (G.StoneInfo {G.spid=playerId, G.sposition=pos})
+    | pos == "A"       = AI.setBoardPosition Nothing (convertToInternalPos pos) board
+    | playerId == pid  = AI.setBoardPosition (Just AI.Red) (convertToInternalPos pos) board
+    | otherwise        = AI.setBoardPosition (Just AI.Black) (convertToInternalPos pos) board
 
 getDebugLine :: Handle -> IO Text
 getDebugLine hdl = do
