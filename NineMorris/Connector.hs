@@ -11,6 +11,7 @@ import System.Exit (exitWith, ExitCode(..))
 import Data.Text (Text,pack,unpack,append)
 import qualified Data.Text.IO as TextIO
 import NineMorris.Parsers.Protocol
+import qualified NineMorris.AI as AI
 
 performConnection :: G.Gameid -> G.Config -> IO ()
 performConnection gid cnf@G.Config{G.hostname=hostname, G.port=port, G.gamekind=gamekind} = do
@@ -142,6 +143,25 @@ parseEndplayers :: Text -> IO ()
 parseEndplayers str = if str == "+ ENDPLAYERS" -- todo switch to parseStatic
     then return ()
     else throw $ G.ProtocolError ("ENDPLAYERS expected, but: " `append` str)
+
+convertMove :: AI.Move -> Text
+convertMove AI.FullMove { AI.fstAction=fst, AI.sndAction=snd} = 
+    let
+        partOne = convertFirstAction fst
+        partTwo = case snd of
+                    Nothing     -> ""
+                    (Just act)  -> convertSecondAction act
+    in partOne `append` partTwo
+
+convertFirstAction :: AI.FirstAction -> Text
+convertFirstAction (AI.Place pos)     = "A1"
+convertFirstAction (AI.Move old new)  = "B1:A1"
+
+convertSecondAction :: AI.SecondAction -> Text
+convertSecondAction (AI.Take pos) = "A1" 
+
+convertPositions :: AI.Position -> Text
+convertPositions (AI.Position pos) = "A"
 
 getDebugLine :: Handle -> IO Text
 getDebugLine hdl = do
