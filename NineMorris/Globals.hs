@@ -8,6 +8,8 @@ import Control.Exception
 import Data.Typeable
 import qualified Data.Map as Map
 
+allowReconnect  = True          :: Bool
+
 defaultConfig   = "config.ini"  :: String
 gameIdLength    = 11            :: Int
 internalVersion = "1.0"         :: Text
@@ -22,8 +24,8 @@ positions       = [ "A0","A1","A2",
                     "B6","B5","B4",
                     "A6","A5","A4" ] :: [Text]
 
-toAiPositions     = Map.fromList $ zipWith (\a b -> (a,b)) positions ([0..23]::[Int])
-toServerPositions = Map.fromList $ zipWith (\a b -> (b,a)) positions ([0..23]::[Int])
+toAiPositions     = Map.fromList $ zipWith (\a b -> (a,b)) positions ([0..23]::[Int]) :: Map.Map Text Int
+toServerPositions = Map.fromList $ zipWith (\a b -> (b,a)) positions ([0..23]::[Int]) :: Map.Map Int Text
 
 data Config         = Config {hostname::Text, port::Int, gamekind::Text} deriving (Show)
 data PlayerInfo     = PlayerInfo {pid::Int, pname::Text, pstatus::PlayerStatus} deriving (Show)

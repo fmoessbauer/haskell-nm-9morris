@@ -16,7 +16,7 @@ where
 
 import qualified NineMorris.Globals as G
 import Data.Attoparsec.Text
-import Data.Text (unpack, take, drop, length, last, Text) 
+import Data.Text (unpack, take, length, last, Text) 
 import Control.Applicative
 import Control.Exception
 
@@ -87,10 +87,20 @@ parserGPSwitch :: Parser G.GamePhase
 parserGPSwitch = 
   ((string "+ WAIT") *> (return $ G.GP_WAIT))
   <|> ((string "+ MOVE ") *> (decimal >>= (\nr -> return $ G.GP_MOVE nr)))
-  <|> ((string "+ GAMEOVER") *> skipSpace *> (return $ G.GP_GAMEOVER Nothing))
+  <|> ((string "+ GAMEOVER") *> skipSpace *> (parserGameOver <|> parserGameOverDraw))
 
 parseGPSwitch :: Text -> G.GamePhase
 parseGPSwitch str = normalizedParse $ parseOnly parserGPSwitch str
+
+parserGameOver :: Parser G.GamePhase
+parserGameOver = do
+  pid <- decimal
+  skipSpace
+  name <- takeText
+  return $ G.GP_GAMEOVER (Just (pid, name))
+
+parserGameOverDraw :: Parser G.GamePhase
+parserGameOverDraw = return $ G.GP_GAMEOVER Nothing
 
 {- move phase parsers -}
 parseMoveCapture :: Text -> Int
