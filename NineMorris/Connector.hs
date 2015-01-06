@@ -96,6 +96,8 @@ handleGamePhase hdl player = fix $ \loop -> do
 
 movePhase :: Handle -> G.PlayerInfo -> Int -> IO Bool
 movePhase hdl player time = do
+    putStrLn $ "Begin MovePhase"
+    putStrLn $ "Player:" ++ (show $ player)
     capture <- getDebugLine hdl >>= (\str -> return $ parseMoveCapture str)
     (cntPlayer, cntStones)  <- getDebugLine hdl >>= (\str -> return $ parseMovePieces str)
     pieces <- replicateM (cntPlayer*cntStones) (getDebugLine hdl >>= (\str -> return $ parseMoveStoneData str))
@@ -103,6 +105,9 @@ movePhase hdl player time = do
 
     let board = convertBoard player pieces
     putStrLn $ show $ board
+
+    putStrLn $ show $ map (\n -> show $ AI.getBoardPosition (AI.Position n) board) [0..23]
+    putStrLn $ show $ AI.getBoardHandCount AI.Red board
 
     getDebugLine hdl >>= parseStatic "+ ENDPIECELIST"
     putDebugStrLn hdl "THINKING"
@@ -120,8 +125,11 @@ movePhase hdl player time = do
     return True
 
 gameOver :: Handle -> (Maybe (Int,Text)) -> IO Bool
-gameOver hdl _ = do
+gameOver hdl winner = do
     -- remove duplicate code TODO
+    case winner of
+        Just (number, name) -> putStrLn $ "Player #" ++ (show $ number) ++ " with name " ++ (unpack $ name) ++ " won the match"
+        Nothing             -> putStrLn $ "Gameover with draw"
     capture <- getDebugLine hdl >>= (\str -> return $ parseMoveCapture str)
     (cntPlayer, cntStones)  <- getDebugLine hdl >>= (\str -> return $ parseMovePieces str)
     pieces <- replicateM (cntPlayer*cntStones) (getDebugLine hdl >>= (\str -> return $ parseMoveStoneData str))
@@ -131,15 +139,6 @@ gameOver hdl _ = do
     hClose hdl
     --exitWith ExitSuccess
     return False
-
-
--- if idle then respond else return line
-idleResponse :: Handle -> IO Text
-idleResponse hdl = do
-    line <- getDebugLine hdl
-    if (line == "+ WAIT")
-        then (putDebugStrLn hdl "OKWAIT") >> idleResponse hdl
-        else return line
 
 parseClientVersOk :: Text -> IO ()
 parseClientVersOk str = if str == "+ Client version accepted - please send Game-ID to join"
@@ -185,12 +184,12 @@ convertToServerPos (AI.Position pos) = Map.findWithDefault "" pos G.toServerPosi
 convertBoard :: G.PlayerInfo -> [G.StoneInfo] -> AI.Board
 convertBoard player stones = foldl (convertSingleStone $ player) (AI.newBoard) stones
 
-{- I am Red -}
+{- I am Black -}
 convertSingleStone :: G.PlayerInfo -> AI.Board -> G.StoneInfo -> AI.Board
 convertSingleStone (G.PlayerInfo {G.pid=pid}) (board) (G.StoneInfo {G.spid=playerId, G.sposition=pos})
     | pos == "A"       = AI.setBoardPosition Nothing (convertToInternalPos pos) board
-    | playerId == pid  = AI.setBoardPosition (Just AI.Red) (convertToInternalPos pos) board
-    | otherwise        = AI.setBoardPosition (Just AI.Black) (convertToInternalPos pos) board
+    | playerId == pid  = (AI.setBoardPosition (Just AI.Red) (convertToInternalPos pos) board)
+    | otherwise        = AI.setBoardPosition (Just AI.Black)   (convertToInternalPos pos) board
 
 getDebugLine :: Handle -> IO Text
 getDebugLine hdl = do

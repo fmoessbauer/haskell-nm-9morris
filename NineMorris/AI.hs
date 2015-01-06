@@ -48,6 +48,7 @@ opponent Black = Red
 
 setBoardPosition :: Maybe Player -> Position -> Board -> Board
 setBoardPosition posVal (Position posN) (Board rawBoard) =
+    -- Todo reduce handCount
     let encode Nothing      = 0
         encode (Just Red)   = 1
         encode (Just Black) = 2
