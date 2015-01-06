@@ -103,11 +103,11 @@ movePhase hdl player time = do
     pieces <- replicateM (cntPlayer*cntStones) (getDebugLine hdl >>= (\str -> return $ parseMoveStoneData str))
     putStrLn $ show $ pieces
 
-    let board = convertBoard player pieces
+    let board = AI.setBoardNextPlayer AI.Black $ convertBoard player pieces
     putStrLn $ show $ board
 
-    putStrLn $ show $ map (\n -> show $ AI.getBoardPosition (AI.Position n) board) [0..23]
-    putStrLn $ show $ AI.getBoardHandCount AI.Red board
+    --putStrLn $ show $ map (\n -> show $ AI.getBoardPosition (AI.Position n) board) [0..23]
+    --putStrLn $ show $ AI.getBoardHandCount AI.Red board
 
     getDebugLine hdl >>= parseStatic "+ ENDPIECELIST"
     putDebugStrLn hdl "THINKING"
@@ -188,8 +188,8 @@ convertBoard player stones = foldl (convertSingleStone $ player) (AI.newBoard) s
 convertSingleStone :: G.PlayerInfo -> AI.Board -> G.StoneInfo -> AI.Board
 convertSingleStone (G.PlayerInfo {G.pid=pid}) (board) (G.StoneInfo {G.spid=playerId, G.sposition=pos})
     | pos == "A"       = AI.setBoardPosition Nothing (convertToInternalPos pos) board
-    | playerId == pid  = (AI.setBoardPosition (Just AI.Red) (convertToInternalPos pos) board)
-    | otherwise        = AI.setBoardPosition (Just AI.Black)   (convertToInternalPos pos) board
+    | playerId == pid  = (AI.reduceBoardHandCount AI.Black) $ (AI.setBoardPosition (Just AI.Black) (convertToInternalPos pos) board)
+    | otherwise        = (AI.reduceBoardHandCount AI.Red) $ (AI.setBoardPosition (Just AI.Red)   (convertToInternalPos pos) board)
 
 getDebugLine :: Handle -> IO Text
 getDebugLine hdl = do

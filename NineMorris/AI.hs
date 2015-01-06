@@ -55,7 +55,7 @@ setBoardPosition posVal (Position posN) (Board rawBoard) =
         idx   = 2 * posN
         value = encode posVal `shiftL` idx
         mask  = complement $ shiftL 3 idx
-    in Board $ (.|.) value $ (.&.) mask rawBoard
+    in Board $ (.|.) value $ (.&.) mask rawBoard 
 
 getBoardPosition :: Position -> Board -> Maybe Player
 getBoardPosition (Position posN) (Board rawBoard) =
@@ -93,6 +93,12 @@ getBoardNextPlayer (Board rawBoard) =
     let toPlayer False = Red
         toPlayer True = Black    
     in toPlayer $ testBit rawBoard 63
+
+reduceBoardHandCount :: Player -> Board -> Board
+reduceBoardHandCount pl board = 
+    let 
+        bc = getBoardHandCount pl board
+    in setBoardHandCount (bc-1) pl board
 
 newBoard :: Board
 newBoard =
