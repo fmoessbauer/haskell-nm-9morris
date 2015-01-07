@@ -7,13 +7,11 @@ import System.IO
 import Control.Exception
 import Control.Monad
 import Control.Monad.Fix (fix)
-import System.Exit (exitWith, ExitCode(..))
 import Data.Text (Text,pack,unpack,append)
 import qualified Data.Text.IO as TextIO
 import NineMorris.Parsers.Protocol
 import qualified NineMorris.AI as AI
 
-import Data.Word (Word64)
 import qualified Data.Map as Map
 
 performConnection :: G.Gameid -> G.Config -> IO ()
@@ -98,10 +96,8 @@ movePhase :: Handle -> G.PlayerInfo -> Int -> IO Bool
 movePhase hdl player time = do
     putStrLn $ "Begin MovePhase"
     putStrLn $ "Player:" ++ (show $ player)
-    capture <- getDebugLine hdl >>= (\str -> return $ parseMoveCapture str)
-    (cntPlayer, cntStones)  <- getDebugLine hdl >>= (\str -> return $ parseMovePieces str)
-    pieces <- replicateM (cntPlayer*cntStones) (getDebugLine hdl >>= (\str -> return $ parseMoveStoneData str))
-    putStrLn $ show $ pieces
+    
+    pieces <- getPieceInfo hdl
 
     let board = AI.setBoardNextPlayer AI.Black $ convertBoard player pieces
     putStrLn $ show $ board
@@ -130,15 +126,23 @@ gameOver hdl winner = do
     case winner of
         Just (number, name) -> putStrLn $ "Player #" ++ (show $ number) ++ " with name " ++ (unpack $ name) ++ " won the match"
         Nothing             -> putStrLn $ "Gameover with draw"
-    capture <- getDebugLine hdl >>= (\str -> return $ parseMoveCapture str)
-    (cntPlayer, cntStones)  <- getDebugLine hdl >>= (\str -> return $ parseMovePieces str)
-    pieces <- replicateM (cntPlayer*cntStones) (getDebugLine hdl >>= (\str -> return $ parseMoveStoneData str))
-    getDebugLine hdl >>= parseStatic "+ ENDPIECELIST"
+    getPieceInfo hdl
     getDebugLine hdl >>= parseStatic "+ QUIT"
     --
     hClose hdl
     --exitWith ExitSuccess
     return False
+
+getPieceInfo :: Handle -> IO [G.StoneInfo]
+getPieceInfo hdl = do
+    getDebugLine hdl >>= (\str -> return $ parseMoveCapture str) --no capture needed
+    (cntPlayer, cntStones)  <- getDebugLine hdl >>= (\str -> return $ parseMovePieces str)
+    pieces <- replicateM (cntPlayer*cntStones) (getDebugLine hdl >>= (\str -> return $ parseMoveStoneData str))
+    getDebugLine hdl >>= parseStatic "+ ENDPIECELIST"
+
+    putStrLn $ show $ pieces
+    
+    return pieces
 
 parseClientVersOk :: Text -> IO ()
 parseClientVersOk str = if str == "+ Client version accepted - please send Game-ID to join"
@@ -159,10 +163,10 @@ parseEndplayers str = if str == "+ ENDPLAYERS" -- todo switch to parseStatic
 
 convertMove :: Maybe AI.Move -> Text
 convertMove Nothing = throw G.AiException
-convertMove (Just AI.FullMove { AI.fstAction=fst, AI.sndAction=snd}) = 
+convertMove (Just AI.FullMove { AI.fstAction=fsta, AI.sndAction=snda}) = 
     let
-        partOne = convertFirstAction fst
-        partTwo = case snd of
+        partOne = convertFirstAction fsta
+        partTwo = case snda of
                     Nothing     -> ""
                     (Just act)  -> ";" `append` convertSecondAction act
     in partOne `append` partTwo

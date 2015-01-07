@@ -13,7 +13,7 @@ import qualified Data.Map as Map
 --import Debug.Trace
 --import Numeric
 import qualified NineMorris.Globals as G
-import Control.Exception
+import Control.Exception hiding (mask)
 
 newtype Board = Board Word64 deriving (Eq, Ord, Show)
 
