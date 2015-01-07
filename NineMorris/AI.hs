@@ -14,6 +14,7 @@ import qualified Data.Map as Map
 --import Numeric
 import qualified NineMorris.Globals as G
 import Control.Exception hiding (mask)
+import qualified Control.Parallel.Strategies as S
 
 newtype Board = Board Word64 deriving (Eq, Ord, Show)
 
@@ -193,7 +194,7 @@ winValue = 1000.0
 
 evalBoard :: Player -> Board -> (Maybe Player, Float)
 evalBoard player board =
-    let pa = fromIntegral (getBoardHandCount player board) +
+    let pa = fromIntegral (getBoardHandCount player board)  +
             fromIntegral (length $ getPlayerPieces player board)
         fa = fromIntegral $ length $ adjMoves player board
         ma = fromIntegral $ length $ getPlayerMills player board
@@ -202,10 +203,11 @@ evalBoard player board =
             fromIntegral (length $ getPlayerPieces oPlayer board)
         fb = fromIntegral $ length $ adjMoves oPlayer board
         mb = fromIntegral $ length $ getPlayerMills oPlayer board
+
     in case () of
            _ | 0 == fb || pb < 3 -> (Just Red, winValue)
              | 0 == fa || pa < 3 -> (Just Black, -winValue)
-             | otherwise -> (Nothing, 1.0*(pa-pb)+0.2*(fa-fb)+0.8*(ma-mb))
+             | otherwise -> (Nothing, 1.0*(pa-pb)+0.2*(fa-fb)+0.8*(ma-mb)) `S.using` S.rpar
 
 evalTree :: Board -> Int -> Float -> Float -> Float
 evalTree board depth alpha beta =
@@ -220,7 +222,7 @@ evalTree board depth alpha beta =
                    if value' >= alpha' 
                    then next ms value' else next ms alpha'
         next [] alpha' = alpha'
-    in if terminal then value else next moves alpha
+    in if terminal then value else (next moves alpha) `S.using` S.rpar
 
 aiMove :: Int -> Map Board Float -> Board -> Maybe Move
 aiMove depth bias board =

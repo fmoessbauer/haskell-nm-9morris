@@ -13,7 +13,7 @@ allowReconnect  = True          :: Bool
 defaultConfig   = "config.ini"  :: String
 gameIdLength    = 11            :: Int
 internalVersion = "1.0"         :: Text
-playerNumber    = "1"           :: Text
+playerNumber    = ""           :: Text
 searchDepth     = 2             :: Int
 positions       = [ "A0","A1","A2",
                     "B0","B1","B2",

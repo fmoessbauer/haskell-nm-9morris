@@ -105,7 +105,6 @@ movePhase hdl player time = do
     --putStrLn $ show $ map (\n -> show $ AI.getBoardPosition (AI.Position n) board) [0..23]
     --putStrLn $ show $ AI.getBoardHandCount AI.Red board
 
-    getDebugLine hdl >>= parseStatic "+ ENDPIECELIST"
     putDebugStrLn hdl "THINKING"
     getDebugLine hdl >>= parseStatic "+ OKTHINK"
     -- Play useless
