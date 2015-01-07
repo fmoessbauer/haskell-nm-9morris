@@ -12,7 +12,6 @@ import qualified Data.Text.IO as TextIO
 import NineMorris.Parsers.Protocol
 import qualified NineMorris.AI as AI
 import NineMorris.AI.Interface
-
 import qualified Data.Map as Map
 
 performConnection :: G.Gameid -> G.Config -> IO ()
