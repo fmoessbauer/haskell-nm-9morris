@@ -125,11 +125,13 @@ adjacencyMap =
 
 getPlayerPieces :: Player -> Board -> [Position]
 getPlayerPieces player board =
-    filter (\p -> Just player == getBoardPosition p board) allPositions
+    let list = filter (\p -> Just player == getBoardPosition p board) allPositions
+    in list --`S.using` S.rpar
 
 getPlayerMills :: Player -> Board -> [[Position]]
 getPlayerMills player board =
-    filter (all (\p -> Just player == getBoardPosition p board)) millPositions
+    let list = filter (all (\p -> Just player == getBoardPosition p board)) millPositions
+    in list --`S.using` S.rpar
 
 playFirstAction :: Player -> FirstAction -> Board -> Board
 playFirstAction player (Place p) board =
@@ -207,7 +209,7 @@ evalBoard player board =
     in case () of
            _ | 0 == fb || pb < 3 -> (Just Red, winValue)
              | 0 == fa || pa < 3 -> (Just Black, -winValue)
-             | otherwise -> (Nothing, 1.0*(pa-pb)+0.2*(fa-fb)+0.8*(ma-mb)) `S.using` S.rpar
+             | otherwise -> (Nothing, 1.0*(pa-pb)+0.2*(fa-fb)+0.8*(ma-mb)) 
 
 evalTree :: Board -> Int -> Float -> Float -> Float
 evalTree board depth alpha beta =
@@ -222,12 +224,12 @@ evalTree board depth alpha beta =
                    if value' >= alpha' 
                    then next ms value' else next ms alpha'
         next [] alpha' = alpha'
-    in if terminal then value else (next moves alpha) `S.using` S.rpar
+    in if terminal then value else (next moves alpha)
 
 aiMove :: Int -> Map Board Float -> Board -> Maybe Move
 aiMove depth bias board =
     let moves = legalMoves board
-        moveVals = zip moves $ map (\m ->
+        moveVals = zip moves $ S.parMap S.rpar (\m ->
             let board' = playMove m board
             in -evalTree board' (2*depth-1) (-1/0) (1/0) +
                    (fromMaybe 0 $ Map.lookup board' bias)) moves
