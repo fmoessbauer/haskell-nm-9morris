@@ -1,2 +1,6 @@
 /dist*
 .DS_Store
+.*
+haskell-nm-9morris.*
+!/haskell-nm-9morris.cabal
+cabal.*
