@@ -168,7 +168,7 @@ partialToFullMoves player board act1 =
         oPieces = getPlayerPieces oPlayer board
         oVulnerable = oPieces \\ (concat $ getPlayerMills oPlayer board)
         oTakeable = if null oVulnerable then oPieces else oVulnerable
-        moves = map (FullMove act1 . Just . Take) oTakeable
+        moves = (map (FullMove act1 . Just . Take) oTakeable) ++ [FullMove act1 Nothing] -- added No Take moves
     in if newMills && (not $ null oTakeable)
        then moves else [FullMove act1 Nothing]
 

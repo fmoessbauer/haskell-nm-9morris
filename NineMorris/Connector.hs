@@ -89,7 +89,7 @@ handleGamePhase hdl player = fix $ \loop -> do
     ret <- case parseGPSwitch $ line of
         G.GP_WAIT          -> putDebugStrLn hdl "OKWAIT" >> return True
         G.GP_MOVE time     -> movePhase hdl player time
-        G.GP_GAMEOVER dat  -> gameOver hdl dat
+        G.GP_GAMEOVER dat  -> gameOver hdl player dat
     if ret then loop else return ()
 
 movePhase :: Handle -> G.PlayerInfo -> Int -> IO Bool
@@ -119,17 +119,20 @@ movePhase hdl player time = do
     getDebugLine hdl >>= parseStatic "+ MOVEOK"
     return True
 
-gameOver :: Handle -> (Maybe (Int,Text)) -> IO Bool
-gameOver hdl winner = do
-    -- remove duplicate code TODO
-    case winner of
-        Just (number, name) -> putStrLn $ "Player #" ++ (show $ number) ++ " with name " ++ (unpack $ name) ++ " won the match"
-        Nothing             -> putStrLn $ "Gameover with draw"
+gameOver :: Handle -> G.PlayerInfo -> (Maybe (Int,Text)) -> IO Bool
+gameOver hdl player winner = do
     getPieceInfo hdl
     getDebugLine hdl >>= parseStatic "+ QUIT"
-    --
+    
+    case winner of
+        Just (number, name) -> do
+            putStrLn $ "Player #" ++ (show $ number) ++ " with name " ++ (unpack $ name) ++ " won the match"
+            if number == G.pid player
+                then putStrLn "YEAH, I WON"
+                else putStrLn "Sadly I lost"
+        Nothing             -> putStrLn $ "Gameover with draw"
+
     hClose hdl
-    --exitWith ExitSuccess
     return False
 
 getPieceInfo :: Handle -> IO [G.StoneInfo]
