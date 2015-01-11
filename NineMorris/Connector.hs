@@ -80,6 +80,7 @@ handleProlog gid gkind hdl = do
     -- recieve endplayers string
     getDebugLine hdl >>= parseEndplayers
 
+    putStrLn $ unpack $ "Playing game " `append` gamename `append` " with " `append` (pack $ show $ total) `append` " players"
     putStrLn $ show $ mePlayer
     return $ mePlayer
 
