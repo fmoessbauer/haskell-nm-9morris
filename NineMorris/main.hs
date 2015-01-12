@@ -10,7 +10,7 @@ import System.IO
 import GHC.Conc (getNumCapabilities, getNumProcessors)
 
 printHelp :: IO()
-printHelp = putStrLn "Usage: <gameid> (<path to config File>)"
+printHelp = putStrLn "Usage: <gameid> (<path to config File>) (<playerId 0|1 >)"
 
 main :: IO()
 main = do

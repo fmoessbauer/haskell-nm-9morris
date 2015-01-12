@@ -38,6 +38,6 @@ verifyPlayerId :: String -> Maybe Int
 verifyPlayerId pl = 
     case pl of
          ""   -> Nothing
+         "0"  -> Just 0
          "1"  -> Just 1
-         "2"  -> Just 2
          _    -> throw G.PlayerIdNotValid
