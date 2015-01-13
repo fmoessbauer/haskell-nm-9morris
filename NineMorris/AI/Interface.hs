@@ -35,7 +35,7 @@ convertToServerPos (AI.Position pos) = Map.findWithDefault "" pos G.toServerPosi
 
 
 convertBoard :: G.PlayerInfo -> [G.StoneInfo] -> AI.Board
-convertBoard player stones = foldl (convertSingleStone $ player) (AI.newBoard) stones
+convertBoard player stones = AI.setBoardNextPlayer AI.Black $ foldl (convertSingleStone $ player) (AI.newBoard) stones
 
 {- I am Black -}
 convertSingleStone :: G.PlayerInfo -> AI.Board -> G.StoneInfo -> AI.Board
