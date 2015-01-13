@@ -24,7 +24,8 @@ main = do
 
     args <- getArgs
     case args of
-        (gameid:path:_) -> startClient gameid path
-        (gameid:_)      -> startClient gameid G.defaultConfig
-        _                -> printHelp
+        (gameid:path:player:_)  -> startClient gameid path player
+        (gameid:path:_)         -> startClient gameid path G.defaultPlayer
+        (gameid:_)              -> startClient gameid G.defaultConfig G.defaultPlayer
+        _                       -> printHelp
     putStrLn "Stop Client"

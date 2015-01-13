@@ -125,7 +125,6 @@ parserMoveStoneData = do
     stone <- decimal
     skipSpace
     pos <- takeWhile1 (not.isHorizontalSpace)
-    -- todo: translate to internal coordinates
     return G.StoneInfo {G.spid=pnr, G.snumber=stone, G.sposition=pos}
 
 parseMoveStoneData :: Text -> G.StoneInfo

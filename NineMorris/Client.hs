@@ -6,11 +6,12 @@ import Data.Map()
 import qualified NineMorris.Parsers.Config as ConfigParser
 import NineMorris.Connector
 
-startClient :: String -> String -> IO ()
-startClient gid cnf = do
+startClient :: String -> String -> String -> IO ()
+startClient gid cnf pid = do
   valgid <- return $! verifyGameId gid
+  player <- return $! verifyPlayerId pid
   config <- readConfigFile cnf
-  performConnection valgid config
+  performConnection valgid config player
 
 {-
     opens, handels and closes TCP connection to gameserver
@@ -32,3 +33,11 @@ verifyGameId :: String -> G.Gameid
 verifyGameId gid = if (length $ gid) == G.gameIdLength
                       then gid
                       else throw G.GameIdNotValid
+                      
+verifyPlayerId :: String -> Maybe Int
+verifyPlayerId pl = 
+    case pl of
+         ""   -> Nothing
+         "1"  -> Just 1
+         "2"  -> Just 2
+         _    -> throw G.PlayerIdNotValid

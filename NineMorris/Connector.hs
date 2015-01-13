@@ -14,8 +14,8 @@ import qualified NineMorris.AI as AI
 import NineMorris.AI.Interface
 import qualified Data.Map as Map
 
-performConnection :: G.Gameid -> G.Config -> IO ()
-performConnection gid cnf@G.Config{G.hostname=hostname, G.port=port, G.gamekind=gamekind} = do
+performConnection :: G.Gameid -> G.Config -> Maybe Int -> IO ()
+performConnection gid cnf@G.Config{G.hostname=hostname, G.port=port, G.gamekind=gamekind} player = do
     -- debug
     putStrLn $ "gameid: "++gid++" "++ (show $ cnf)
 
@@ -36,19 +36,19 @@ performConnection gid cnf@G.Config{G.hostname=hostname, G.port=port, G.gamekind=
 
     -- ready for IO
     -- Todo: Handle Exceptions
-    handleProtocol gid gamekind hdl
+    handleProtocol gid gamekind player hdl
 
     -- close Handle and Socket
     hClose hdl
 
-handleProtocol :: G.Gameid -> Text ->Handle -> IO ()
-handleProtocol gid gkind hdl = do
-    player <- handleProlog gid gkind hdl
+handleProtocol :: G.Gameid -> Text -> Maybe Int -> Handle -> IO ()
+handleProtocol gid gkind wishPlayer hdl = do
+    player <- handleProlog gid gkind wishPlayer hdl
     handleGamePhase hdl player
     return ()
 
-handleProlog :: G.Gameid -> Text -> Handle -> IO G.PlayerInfo
-handleProlog gid gkind hdl = do
+handleProlog :: G.Gameid -> Text -> Maybe Int -> Handle -> IO G.PlayerInfo
+handleProlog gid gkind wishPlayer hdl = do
     line <- getDebugLine hdl
     let vers = parseWelcome line
     -- Todo check version
@@ -67,7 +67,10 @@ handleProlog gid gkind hdl = do
     gamename <- (getDebugLine hdl >>= (\str -> return $ parseGameName str))
 
     -- send player number
-    putDebugStrLn hdl $ "PLAYER " `append` G.playerNumber
+    let wishPid = case wishPlayer of
+                   Nothing  -> ""
+                   Just pid -> pack $ show $ pid
+    putDebugStrLn hdl $ "PLAYER " `append` wishPid
 
     -- get player info
     mePlayer <- getDebugLine hdl >>= (\str -> return $ parseMePlayerInfo str)
@@ -80,6 +83,7 @@ handleProlog gid gkind hdl = do
     -- recieve endplayers string
     getDebugLine hdl >>= parseEndplayers
 
+    putStrLn $ unpack $ "Playing game '" `append` gamename `append` "' with " `append` (pack $ show $ total) `append` " players"
     putStrLn $ show $ mePlayer
     return $ mePlayer
 
