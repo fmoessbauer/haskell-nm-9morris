@@ -177,18 +177,29 @@ placeMoves board = map Place $ filter (\p ->
     isNothing $ getBoardPosition p board) allPositions
 
 adjMoves :: Player -> Board -> [FirstAction]
-adjMoves player board = concatMap (\p -> map (\p' -> Move p p') $
-    filter (isNothing . flip getBoardPosition board) $
-    fromJust $ Map.lookup p adjacencyMap) $
+adjMoves player board = 
+    concatMap (\p -> map (\p' -> Move p p') $
+        filter (isNothing . flip getBoardPosition board) $
+        fromJust $ Map.lookup p adjacencyMap) $
+    getPlayerPieces player board
+
+jmpMoves :: Player -> Board -> [FirstAction]
+jmpMoves player board =
+    concatMap (\p -> map (\p' -> Move p p') $
+        filter (isNothing . flip getBoardPosition board) $
+        filter (\possible -> isNothing $ getBoardPosition possible board) allPositions) $
     getPlayerPieces player board
 
 legalMoves :: Board -> [Move]
 legalMoves board =
-    let player = getBoardNextPlayer board
-        inHand = getBoardHandCount player board > 0
+    let player  = getBoardNextPlayer board
+        inHand  = getBoardHandCount player board > 0
+        jmpAble = (length $ getPlayerPieces player board) <= 3
         moves = if inHand
                 then placeMoves board
-                else adjMoves player board
+                else if not $ jmpAble
+                    then adjMoves player board
+                    else jmpMoves player board
     in concatMap (partialToFullMoves player board) moves
 
 winValue :: Float
