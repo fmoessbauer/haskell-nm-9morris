@@ -36,7 +36,7 @@ data GamePhase      = GP_WAIT | GP_MOVE Int | GP_GAMEOVER (Maybe (Int, Text))
 type Gameid         = String
 
 {- Game Excemptions -}
-data MorrisException = GameIdNotValid | PlayerIdNotValid | FileNotFound | ConfigNotValid Text | ProtocolError Text | InternalParserError String | AiException
+data MorrisException = GameIdNotValid | PlayerIdNotValid | FileNotFound | ConfigNotValid Text | ProtocolError Text | InternalParserError String | AiException | TimeOutAI
     deriving (Show, Typeable)
 
 instance Exception MorrisException

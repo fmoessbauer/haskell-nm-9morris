@@ -5,6 +5,10 @@ import qualified NineMorris.Globals as G
 import Network.Socket
 import System.IO
 import Control.Exception
+import Control.Exception.Base
+import Control.Concurrent (newEmptyMVar,takeMVar,putMVar,forkIO)
+import qualified Control.Concurrent.Timer as Timer
+import Control.Concurrent.Suspend (msDelay)
 import Control.Monad
 import Control.Monad.Fix (fix)
 import Data.Text (Text,pack,unpack,append)
@@ -110,16 +114,25 @@ movePhase hdl player time = do
     --putStrLn $ show $ AI.getBoardHandCount AI.Red board
 
     putDebugStrLn hdl "THINKING"
+    --
+    moveStore <- newEmptyMVar
+    tid <- forkIO $ do
+      putMVar moveStore $! AI.aiMove G.searchDepth Map.empty board
+    
+    t <- Timer.oneShotStart (do
+      throwTo tid G.TimeOutAI
+      intMove <- takeMVar moveStore
+      putStrLn $ show $ intMove
+      move <- return $ convertMove $ intMove
+      putDebugStrLn hdl ("PLAY " `append` move)
+      ) (msDelay 2000)   
+    --
+    
     getDebugLine hdl >>= parseStatic "+ OKTHINK"
     -- Play useless
     -- calculate move
     --  BIG TODO
     --
-    let intMove = AI.aiMove G.searchDepth Map.empty board
-    putStrLn $ show $ intMove
-
-    move <- return $ convertMove $ intMove
-    putDebugStrLn hdl ("PLAY " `append` move)
     getDebugLine hdl >>= parseStatic "+ MOVEOK"
     return True
 
