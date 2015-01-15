@@ -14,7 +14,7 @@ printHelp = putStrLn "Usage: <gameid> (<path to config File>) (<playerId 0|1 >)"
 
 main :: IO()
 main = do
-    hSetBuffering stdout NoBuffering
+    hSetBuffering stdout LineBuffering
     putStrLn $ "Starting Client Version " ++ showVersion version
 
     -- determine CPU Info

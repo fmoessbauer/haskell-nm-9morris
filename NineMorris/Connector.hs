@@ -117,15 +117,16 @@ movePhase hdl player time = do
     putDebugStrLn hdl "THINKING"
     --
     moveStore <- newEmptyMVar
-    moveSave  <- newMVar Nothing
+    moveSave  <- newMVar (Nothing, 0)
     tid <- forkIO $ handle timeoutHandler (calculateIterativeMove (moveStore,moveSave) board 0)
     
     Timer.oneShotTimer (do
       throwTo tid G.TimeOutAI
-      intMove <- takeMVar moveSave
-      putStrLn $ show $ intMove
+      (intMove,depth) <- takeMVar moveSave
+      --putStrLn $ show $ intMove
       move <- return $ convertMove $ intMove
       putDebugStrLn hdl ("PLAY " `append` move)
+      putStrLn $ "Calculated using search depth " ++ (show $ depth)
       ) (msDelay $ fromIntegral (time - G.aiTimeoutBuffer))   
     --
     
@@ -156,14 +157,15 @@ gameOver hdl player winner = do
 timeoutHandler :: G.MorrisException -> IO ()
 timeoutHandler _ = return() --putStrLn "Caught Timeout Exception"
 
-calculateIterativeMove :: (MVar (Maybe AI.Move), MVar (Maybe AI.Move)) -> AI.Board -> Int -> IO ()
+calculateIterativeMove :: (MVar (Maybe AI.Move), MVar (Maybe AI.Move, Int)) -> AI.Board -> Int -> IO ()
 calculateIterativeMove (moveStore,moveSave) board depth = do
-    putStrLn "calculateIterativeMove"
+    --putStrLn "calculateIterativeMove"
     m <- tryTakeMVar moveStore
-    putStrLn $ show $ m
+    putStrLn $ "Current best: " ++ (show $ m)
+    let realDepth = G.searchDepth + depth
     when (isJust m) $ do
-        modifyMVar_ moveSave (\_ -> return $ fromMaybe Nothing m)
-    putMVar moveStore $! AI.aiMove (G.searchDepth + depth) Map.empty board
+        modifyMVar_ moveSave (\_ -> return $ (fromMaybe Nothing m, realDepth-1))
+    putMVar moveStore $! AI.aiMove realDepth Map.empty board
     calculateIterativeMove (moveStore,moveSave) board (depth+1)
 
 getPieceInfo :: Handle -> IO [G.StoneInfo]
