@@ -14,8 +14,10 @@ defaultConfig   = "config.ini"  :: String
 defaultPlayer   = ""            :: String
 gameIdLength    = 11            :: Int
 internalVersion = "1.0"         :: Text
-playerNumber    = ""           :: Text
+playerNumber    = ""            :: Text
 searchDepth     = 2             :: Int
+maxSearchDepth  = 20            :: Int
+aiTimeoutBuffer = 700           :: Int
 positions       = [ "A0","A1","A2",
                     "B0","B1","B2",
                     "C0","C1","C2",
@@ -36,7 +38,7 @@ data GamePhase      = GP_WAIT | GP_MOVE Int | GP_GAMEOVER (Maybe (Int, Text))
 type Gameid         = String
 
 {- Game Excemptions -}
-data MorrisException = GameIdNotValid | PlayerIdNotValid | FileNotFound | ConfigNotValid Text | ProtocolError Text | InternalParserError String | AiException
+data MorrisException = GameIdNotValid | PlayerIdNotValid | FileNotFound | ConfigNotValid Text | ProtocolError Text | InternalParserError String | AiException | TimeOutAI
     deriving (Show, Typeable)
 
 instance Exception MorrisException

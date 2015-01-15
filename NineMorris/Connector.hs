@@ -5,6 +5,10 @@ import qualified NineMorris.Globals as G
 import Network.Socket
 import System.IO
 import Control.Exception
+import Control.Concurrent (forkIO)
+import qualified Control.Concurrent.Timer as Timer
+import Control.Concurrent.Suspend (msDelay)
+import Control.Concurrent.MVar
 import Control.Monad
 import Control.Monad.Fix (fix)
 import Data.Text (Text,pack,unpack,append)
@@ -13,6 +17,7 @@ import NineMorris.Parsers.Protocol
 import qualified NineMorris.AI as AI
 import NineMorris.AI.Interface
 import qualified Data.Map as Map
+import Data.Maybe (isJust,fromMaybe)
 
 performConnection :: G.Gameid -> G.Config -> Maybe Int -> IO ()
 performConnection gid cnf@G.Config{G.hostname=hostname, G.port=port, G.gamekind=gamekind} player = do
@@ -110,16 +115,26 @@ movePhase hdl player time = do
     --putStrLn $ show $ AI.getBoardHandCount AI.Red board
 
     putDebugStrLn hdl "THINKING"
+    --
+    moveStore <- newEmptyMVar
+    moveSave  <- newMVar (Nothing, 0)
+    tid <- forkIO $ handle timeoutHandler (calculateIterativeMove (moveStore,moveSave) board 0)
+    
+    Timer.oneShotTimer (do
+      throwTo tid G.TimeOutAI
+      (intMove,depth) <- takeMVar moveSave
+      --putStrLn $ show $ intMove
+      move <- return $ convertMove $ intMove
+      putDebugStrLn hdl ("PLAY " `append` move)
+      putStrLn $ "Calculated using search depth " ++ (show $ depth)
+      ) (msDelay $ fromIntegral (time - G.aiTimeoutBuffer))   
+    --
+    
     getDebugLine hdl >>= parseStatic "+ OKTHINK"
     -- Play useless
     -- calculate move
     --  BIG TODO
     --
-    let intMove = AI.aiMove G.searchDepth Map.empty board
-    putStrLn $ show $ intMove
-
-    move <- return $ convertMove $ intMove
-    putDebugStrLn hdl ("PLAY " `append` move)
     getDebugLine hdl >>= parseStatic "+ MOVEOK"
     return True
 
@@ -138,6 +153,23 @@ gameOver hdl player winner = do
 
     hClose hdl
     return False
+
+timeoutHandler :: G.MorrisException -> IO ()
+timeoutHandler _ = return() --putStrLn "Caught Timeout Exception"
+
+calculateIterativeMove :: (MVar (Maybe AI.Move), MVar (Maybe AI.Move, Int)) -> AI.Board -> Int -> IO ()
+calculateIterativeMove (moveStore,moveSave) board depth = do
+    --putStrLn "calculateIterativeMove"
+    m <- tryTakeMVar moveStore
+    putStrLn $ "Current best: " ++ (show $ m)
+    let realDepth = G.searchDepth + depth
+    when (isJust m) $ do
+        modifyMVar_ moveSave (\_ -> return $ (fromMaybe Nothing m, realDepth-1))
+    if realDepth > G.maxSearchDepth
+        then return () -- prevent explosion of search depth
+        else do
+            putMVar moveStore $! AI.aiMove realDepth Map.empty board
+            calculateIterativeMove (moveStore,moveSave) board (depth+1)
 
 getPieceInfo :: Handle -> IO [G.StoneInfo]
 getPieceInfo hdl = do

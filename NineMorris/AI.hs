@@ -248,4 +248,4 @@ aiMove depth bias board =
             if isNothing bm
             then (Just m,v)
             else (if v>bv then (Just m,v) else b)) (Nothing,-1/0) moveVals
-    in move
+	    in move `S.using` S.rseq
