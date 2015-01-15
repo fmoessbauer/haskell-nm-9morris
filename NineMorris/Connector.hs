@@ -154,7 +154,7 @@ gameOver hdl player winner = do
     return False
 
 timeoutHandler :: G.MorrisException -> IO ()
-timeoutHandler _ = putStrLn "Caught Timeout Exception"
+timeoutHandler _ = return() --putStrLn "Caught Timeout Exception"
 
 calculateIterativeMove :: (MVar (Maybe AI.Move), MVar (Maybe AI.Move)) -> AI.Board -> Int -> IO ()
 calculateIterativeMove (moveStore,moveSave) board depth = do
