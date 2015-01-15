@@ -165,6 +165,8 @@ calculateIterativeMove (moveStore,moveSave) board depth = do
     let realDepth = G.searchDepth + depth
     when (isJust m) $ do
         modifyMVar_ moveSave (\_ -> return $ (fromMaybe Nothing m, realDepth-1))
+    when (realDepth > G.maxSearchDepth) $
+        return () -- prevent explosion of search depth
     putMVar moveStore $! AI.aiMove realDepth Map.empty board
     calculateIterativeMove (moveStore,moveSave) board (depth+1)
 

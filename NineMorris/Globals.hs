@@ -16,6 +16,7 @@ gameIdLength    = 11            :: Int
 internalVersion = "1.0"         :: Text
 playerNumber    = ""            :: Text
 searchDepth     = 2             :: Int
+maxSearchDepth  = 20            :: Int
 aiTimeoutBuffer = 700           :: Int
 positions       = [ "A0","A1","A2",
                     "B0","B1","B2",
