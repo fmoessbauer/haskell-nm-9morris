@@ -14,8 +14,9 @@ defaultConfig   = "config.ini"  :: String
 defaultPlayer   = ""            :: String
 gameIdLength    = 11            :: Int
 internalVersion = "1.0"         :: Text
-playerNumber    = ""           :: Text
+playerNumber    = ""            :: Text
 searchDepth     = 2             :: Int
+aiTimeoutBuffer = 700           :: Int
 positions       = [ "A0","A1","A2",
                     "B0","B1","B2",
                     "C0","C1","C2",
