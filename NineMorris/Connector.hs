@@ -118,6 +118,8 @@ movePhase hdl player time = do
     --
     moveStore <- newEmptyMVar
     moveSave  <- newMVar (Nothing, 0)
+    --
+    
     tid <- forkIO $ handle timeoutHandler (calculateIterativeMove (moveStore,moveSave) board 0)
     
     Timer.oneShotTimer (do
@@ -129,6 +131,10 @@ movePhase hdl player time = do
       putStrLn $ "Calculated using search depth " ++ (show $ depth)
       ) (msDelay $ fromIntegral (time - G.aiTimeoutBuffer))   
     --
+
+    -- manual play extension
+    --move <- getLine
+    --putDebugStrLn hdl $ pack $  "PLAY " ++ move
     
     getDebugLine hdl >>= parseStatic "+ OKTHINK"
     -- Play useless
