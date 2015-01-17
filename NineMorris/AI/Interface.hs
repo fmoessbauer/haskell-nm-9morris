@@ -1,7 +1,8 @@
 {-# LANGUAGE OverloadedStrings #-}
 module NineMorris.AI.Interface (
     convertMove,
-    convertBoard )
+    convertBoard,
+    calculateIterativeMove )
 where
 
 import qualified NineMorris.Globals as G
@@ -9,6 +10,9 @@ import qualified NineMorris.AI as AI
 import Data.Text (Text,append)
 import Control.Exception
 import qualified Data.Map as Map
+import Data.Maybe (isJust,fromMaybe)
+import Control.Concurrent.MVar
+import Control.Monad (when)
 
 convertMove :: Maybe AI.Move -> Text
 convertMove Nothing = throw G.AiException
@@ -35,7 +39,7 @@ convertToServerPos (AI.Position pos) = Map.findWithDefault "" pos G.toServerPosi
 
 
 convertBoard :: G.PlayerInfo -> [G.StoneInfo] -> AI.Board
-convertBoard player stones = foldl (convertSingleStone $ player) (AI.newBoard) stones
+convertBoard player stones = AI.setBoardNextPlayer AI.Black $ foldl (convertSingleStone $ player) (AI.newBoard) stones
 
 {- I am Black -}
 convertSingleStone :: G.PlayerInfo -> AI.Board -> G.StoneInfo -> AI.Board
@@ -43,3 +47,17 @@ convertSingleStone (G.PlayerInfo {G.pid=pid}) (board) (G.StoneInfo {G.spid=playe
     | pos == "A"       = AI.setBoardPosition Nothing (convertToInternalPos pos) board
     | playerId == pid  = (AI.reduceBoardHandCount AI.Black) $ (AI.setBoardPosition (Just AI.Black) (convertToInternalPos pos) board)
     | otherwise        = (AI.reduceBoardHandCount AI.Red) $ (AI.setBoardPosition (Just AI.Red)   (convertToInternalPos pos) board)
+
+calculateIterativeMove :: (MVar (Maybe AI.Move), MVar (Maybe AI.Move, Int)) -> AI.Board -> Int -> IO ()
+calculateIterativeMove (moveStore,moveSave) board depth = do
+    --putStrLn "calculateIterativeMove"
+    m <- tryTakeMVar moveStore
+    putStrLn $ "Current best: " ++ (show $ m)
+    let realDepth = G.searchDepth + depth
+    when (isJust m) $ do
+        modifyMVar_ moveSave (\_ -> return $ (fromMaybe Nothing m, realDepth-1))
+    if realDepth > G.maxSearchDepth
+        then return () -- prevent explosion of search depth
+        else do
+            putMVar moveStore $! AI.aiMove realDepth Map.empty board
+            calculateIterativeMove (moveStore,moveSave) board (depth+1)

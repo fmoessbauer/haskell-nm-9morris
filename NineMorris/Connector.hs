@@ -14,10 +14,7 @@ import Control.Monad.Fix (fix)
 import Data.Text (Text,pack,unpack,append)
 import qualified Data.Text.IO as TextIO
 import NineMorris.Parsers.Protocol
-import qualified NineMorris.AI as AI
 import NineMorris.AI.Interface
-import qualified Data.Map as Map
-import Data.Maybe (isJust,fromMaybe)
 
 performConnection :: G.Gameid -> G.Config -> Maybe Int -> IO ()
 performConnection gid cnf@G.Config{G.hostname=hostname, G.port=port, G.gamekind=gamekind} player = do
@@ -108,7 +105,7 @@ movePhase hdl player time = do
     
     pieces <- getPieceInfo hdl
 
-    let board = AI.setBoardNextPlayer AI.Black $ convertBoard player pieces
+    let board = convertBoard player pieces
     putStrLn $ show $ board
 
     --putStrLn $ show $ map (\n -> show $ AI.getBoardPosition (AI.Position n) board) [0..23]
@@ -162,20 +159,6 @@ gameOver hdl player winner = do
 
 timeoutHandler :: G.MorrisException -> IO ()
 timeoutHandler _ = return() --putStrLn "Caught Timeout Exception"
-
-calculateIterativeMove :: (MVar (Maybe AI.Move), MVar (Maybe AI.Move, Int)) -> AI.Board -> Int -> IO ()
-calculateIterativeMove (moveStore,moveSave) board depth = do
-    --putStrLn "calculateIterativeMove"
-    m <- tryTakeMVar moveStore
-    putStrLn $ "Current best: " ++ (show $ m)
-    let realDepth = G.searchDepth + depth
-    when (isJust m) $ do
-        modifyMVar_ moveSave (\_ -> return $ (fromMaybe Nothing m, realDepth-1))
-    if realDepth > G.maxSearchDepth
-        then return () -- prevent explosion of search depth
-        else do
-            putMVar moveStore $! AI.aiMove realDepth Map.empty board
-            calculateIterativeMove (moveStore,moveSave) board (depth+1)
 
 getPieceInfo :: Handle -> IO [G.StoneInfo]
 getPieceInfo hdl = do
