@@ -120,7 +120,7 @@ movePhase hdl player time = do
     moveSave  <- newMVar (Nothing, 0)
     --
     
-    tid <- forkIO $ handle timeoutHandler (calculateIterativeMove (moveStore,moveSave) board 0)
+    tid <- forkIO $ handle timeoutHandler $ calculateIterativeMove (moveStore,moveSave) board 0
     
     Timer.oneShotTimer (do
       throwTo tid G.TimeOutAI
