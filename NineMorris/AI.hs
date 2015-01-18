@@ -117,11 +117,23 @@ millPositions =
         [1,4,7],[16,19,22],
         [8,12,17],[5,13,20],[2,14,23]]
 
+{- prepared for better heuristic function
+cornerPositions :: [Position]
+cornerPositions =
+    map Position [0,2,3,5,6,8,15,17,18,20,21,23]
+-}
+
 adjacencyMap :: Map Position [Position]
 adjacencyMap =
     let ps = concatMap (\x@(k,v) -> [x,(v,k)]) $
             concatMap (\m -> zip m (tail m)) millPositions
     in foldr (\(k,v) m -> Map.insertWith' (++) k [v] m) Map.empty ps
+
+{- prepared for better heuristic function
+threePiecePosMap :: Map Position [Position]
+threePiecePosMap =
+    foldr (\p -> Map.insert p (fromJust $ Map.lookup p adjacencyMap)) Map.empty cornerPositions
+-}
 
 getPlayerPieces :: Player -> Board -> [Position]
 getPlayerPieces player board =
@@ -183,6 +195,14 @@ adjMoves player board =
         fromJust $ Map.lookup p adjacencyMap) $
     getPlayerPieces player board
 
+blockedPiecesCnt :: Player -> Board -> Int
+blockedPiecesCnt player board = 
+    length $ filter (null) $
+    map (\p -> 
+        filter (isNothing . flip getBoardPosition board) $
+        fromJust $ Map.lookup p adjacencyMap) $
+    getPlayerPieces player board
+
 jmpMoves :: Player -> Board -> [FirstAction]
 jmpMoves player board =
     concatMap (\p -> map (\p' -> Move p p') $
@@ -207,20 +227,32 @@ winValue = 1000.0
 
 evalBoard :: Player -> Board -> (Maybe Player, Float)
 evalBoard player board =
-    let pa = fromIntegral (getBoardHandCount player board)  +
-            fromIntegral (length $ getPlayerPieces player board)
+    let 
+        hc = fromIntegral (getBoardHandCount player board)
+
+        pa = hc  + fromIntegral (length $ getPlayerPieces player board)
         fa = fromIntegral $ length $ adjMoves player board
+        ba = fromIntegral $ blockedPiecesCnt player board -- blocked A pieces
         ma = fromIntegral $ length $ getPlayerMills player board
+
         oPlayer = opponent player
         pb = fromIntegral (getBoardHandCount oPlayer board) +
             fromIntegral (length $ getPlayerPieces oPlayer board)
         fb = fromIntegral $ length $ adjMoves oPlayer board
+        bb = fromIntegral $ blockedPiecesCnt oPlayer board -- blocked B pieces
         mb = fromIntegral $ length $ getPlayerMills oPlayer board
 
     in case () of
            _ | 0 == fb || pb < 3 -> (Just Red, winValue)
              | 0 == fa || pa < 3 -> (Just Black, -winValue)
-             | otherwise -> (Nothing, 1.0*(pa-pb)+0.2*(fa-fb)+0.8*(ma-mb)) 
+             | hc > 0    -> (Nothing, 1.44*(ma-mb) - 0.06*(ba-bb) + 0.50*(pa-pb) + 0.3*(fa-fb))
+             | pa == 3   -> (Nothing, 1.30*(ma-mb) + 1.00*(pa-pb) + 0.20*(fa-fb)) 
+             | otherwise -> (Nothing, 1.34*(ma-mb) - 0.31*(ba-bb) + 0.34*(pa-pb) + 0.3*(fa-fb))
+             -- | otherwise -> (Nothing, 1.0*(pa-pb)+0.2*(fa-fb)+0.8*(ma-mb)) 
+             -- heuristic based on https://kartikkukreja.wordpress.com/2014/03/17/heuristicevaluation-function-for-nine-mens-morris/
+             -- Evaluation function for Phase 1 = 18 * (1) + 26 * (2) + 1 * (3) + 9 * (4) + 10 * (5) + 7 * (6)
+             -- Evaluation function for Phase 2 = 14 * (1) + 43 * (2) + 10 * (3) + 11 * (4) + 8 * (7) + 1086 * (8)
+             -- Evaluation function for Phase 3 = 16 * (1) + 10 * (5) + 1 * (6) + 1190 * (8)
 
 evalTree :: Board -> Int -> Float -> Float -> Float
 evalTree board depth alpha beta =
