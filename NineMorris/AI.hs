@@ -228,26 +228,26 @@ winValue = 1000.0
 evalBoard :: Player -> Board -> (Maybe Player, Float)
 evalBoard player board =
     let 
-        hc = fromIntegral (getBoardHandCount player board)
+        ha = fromIntegral (getBoardHandCount player board)
+        hb = fromIntegral (getBoardHandCount player board)
 
-        pa = hc  + fromIntegral (length $ getPlayerPieces player board)
-        fa = fromIntegral $ length $ adjMoves player board
+        pa = ha  + fromIntegral (length $ getPlayerPieces player board)
+        -- fa = fromIntegral $ length $ adjMoves player board
         ba = fromIntegral $ blockedPiecesCnt player board -- blocked A pieces
         ma = fromIntegral $ length $ getPlayerMills player board
 
         oPlayer = opponent player
-        pb = fromIntegral (getBoardHandCount oPlayer board) +
-            fromIntegral (length $ getPlayerPieces oPlayer board)
-        fb = fromIntegral $ length $ adjMoves oPlayer board
+        pb = hb + fromIntegral (length $ getPlayerPieces oPlayer board)
+        -- fb = fromIntegral $ length $ adjMoves oPlayer board
         bb = fromIntegral $ blockedPiecesCnt oPlayer board -- blocked B pieces
         mb = fromIntegral $ length $ getPlayerMills oPlayer board
 
     in case () of
-           _ | 0 == fb || pb < 3 -> (Just Red, winValue)
-             | 0 == fa || pa < 3 -> (Just Black, -winValue)
-             | hc > 0    -> (Nothing, 1.44*(ma-mb) - 0.06*(ba-bb) + 0.50*(pa-pb) + 0.3*(fa-fb))
-             | pa == 3   -> (Nothing, 1.30*(ma-mb) + 1.00*(pa-pb) + 0.20*(fa-fb)) 
-             | otherwise -> (Nothing, 1.34*(ma-mb) - 0.31*(ba-bb) + 0.34*(pa-pb) + 0.3*(fa-fb))
+           _ | pb == bb || pb < 3 -> (Just Red, winValue)
+             | pa == ba || pa < 3 -> (Just Black, -winValue)
+             | ha > 0    -> (Nothing, 1.44*(ma-mb) - 0.06*(ba-bb) + 0.50*(pa-pb)) -- + 0.3*(fa-fb)
+             | pa == 3   -> (Nothing, 1.00*(ma-mb) + 0.70*(pa-pb)) 
+             | otherwise -> (Nothing, 1.34*(ma-mb) - 0.31*(ba-bb) + 0.34*(pa-pb)) -- + 0.3*(fa-fb)
              -- | otherwise -> (Nothing, 1.0*(pa-pb)+0.2*(fa-fb)+0.8*(ma-mb)) 
              -- heuristic based on https://kartikkukreja.wordpress.com/2014/03/17/heuristicevaluation-function-for-nine-mens-morris/
              -- Evaluation function for Phase 1 = 18 * (1) + 26 * (2) + 1 * (3) + 9 * (4) + 10 * (5) + 7 * (6)
