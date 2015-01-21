@@ -25,23 +25,30 @@ instance NFData Position
 data FirstAction
     = Place Position
     | Move Position Position
-    deriving (Show)
+    deriving (Eq, Show)
 
 newtype SecondAction
     = Take Position
-    deriving (Show)
+    deriving (Eq, Show)
 
 data Action
     = FirstAction FirstAction
     | SecondAction SecondAction
-    deriving (Show)
+    deriving (Eq, Show)
 
 data Move = FullMove {
     fstAction :: FirstAction,
     sndAction :: Maybe SecondAction}
-    deriving (Show)
+    deriving (Eq, Show)
 
 data Player = Red | Black deriving (Eq, Show)
+
+-- prefere take moves
+instance Ord Move where
+    compare FullMove{sndAction=a} FullMove{sndAction=b} 
+        | (isNothing a) && (isJust b) = LT
+        | otherwise                 = EQ
+
 
 opponent :: Player -> Player
 opponent Red = Black
@@ -214,13 +221,13 @@ legalMoves :: Board -> [Move]
 legalMoves board =
     let player  = getBoardNextPlayer board
         inHand  = getBoardHandCount player board > 0
-        jmpAble = (length $ getPlayerPieces player board) <= 3
+        jmpAble = (length $ getPlayerPieces player board) == 3
         moves = if inHand
                 then placeMoves board
                 else if not $ jmpAble
                     then adjMoves player board
                     else jmpMoves player board
-    in concatMap (partialToFullMoves player board) moves
+    in sort $ concatMap (partialToFullMoves player board) moves
 
 winValue :: Float
 winValue = 1000.0
@@ -232,21 +239,21 @@ evalBoard player board =
         hb = fromIntegral (getBoardHandCount player board)
 
         pa = ha  + fromIntegral (length $ getPlayerPieces player board)
-        -- fa = fromIntegral $ length $ adjMoves player board
+        fa = fromIntegral $ length $ adjMoves player board
         ba = fromIntegral $ blockedPiecesCnt player board -- blocked A pieces
         ma = fromIntegral $ length $ getPlayerMills player board
 
         oPlayer = opponent player
         pb = hb + fromIntegral (length $ getPlayerPieces oPlayer board)
-        -- fb = fromIntegral $ length $ adjMoves oPlayer board
+        fb = fromIntegral $ length $ adjMoves oPlayer board
         bb = fromIntegral $ blockedPiecesCnt oPlayer board -- blocked B pieces
         mb = fromIntegral $ length $ getPlayerMills oPlayer board
 
     in case () of
            _ | pb == bb || pb < 3 -> (Just Red, winValue)
              | pa == ba || pa < 3 -> (Just Black, -winValue)
-             | ha > 0    -> (Nothing, 1.44*(ma-mb) - 0.06*(ba-bb) + 0.50*(pa-pb)) -- + 0.3*(fa-fb)
-             | pa == 3   -> (Nothing, 1.00*(ma-mb) + 0.70*(pa-pb)) 
+             | ha > 0    -> (Nothing, 1.44*(ma-mb) + 0.50*(pa-pb) + 0.3*(fa-fb))
+             | pa == 3   -> (Nothing, 2*(ma) + 2*(pa-pb))-- 1.00*(ma-mb) + 0.70*(pa-pb)) 
              | otherwise -> (Nothing, 1.34*(ma-mb) - 0.31*(ba-bb) + 0.34*(pa-pb)) -- + 0.3*(fa-fb)
              -- | otherwise -> (Nothing, 1.0*(pa-pb)+0.2*(fa-fb)+0.8*(ma-mb)) 
              -- heuristic based on https://kartikkukreja.wordpress.com/2014/03/17/heuristicevaluation-function-for-nine-mens-morris/
