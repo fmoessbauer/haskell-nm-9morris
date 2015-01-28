@@ -1,7 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE NamedFieldPuns    #-}
 module NineMorris.Connector (performConnection) where
 
 import qualified NineMorris.Globals as G
+import NineMorris.Globals (Config(..))
 import Network.Socket
 import System.IO
 import Control.Exception
@@ -16,8 +18,9 @@ import qualified Data.Text.IO as TextIO
 import NineMorris.Parsers.Protocol
 import NineMorris.AI.Interface
 
-performConnection :: G.Gameid -> G.Config -> Maybe Int -> IO ()
-performConnection gid cnf@G.Config{G.hostname=hostname, G.port=port, G.gamekind=gamekind} player = do
+
+performConnection :: G.Gameid -> Config -> Maybe Int -> IO ()
+performConnection gid cnf@Config{hostname, port, gamekind} player = do
     -- debug
     putStrLn $ "gameid: "++gid++" "++ (show $ cnf)
 
@@ -85,7 +88,7 @@ handleProlog gid gkind wishPlayer hdl = do
     -- recieve endplayers string
     getDebugLine hdl >>= parseEndplayers
 
-    putStrLn $ unpack $ "Playing game '" `append` gamename `append` "' with " `append` (pack $ show $ total) `append` " players"
+    putStrLn $ "Playing game '" ++ (unpack $ gamename) ++ "' with " ++ (show $ total) ++ " players"
     putStrLn $ show $ mePlayer
     return $ mePlayer
 
