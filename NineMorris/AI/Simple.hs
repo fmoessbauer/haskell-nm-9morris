@@ -1,6 +1,6 @@
 {- AI based on this implementation https://hackage.haskell.org/package/hsqml-demo-morris -}
 
-module NineMorris.AI where
+module NineMorris.AI.Simple where
 
 import Control.DeepSeq
 import Data.Word

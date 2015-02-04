@@ -21,6 +21,7 @@ main = do
     num_avail <- getNumProcessors
     num_used  <- getNumCapabilities
     putStrLn $ "Using " ++ show num_used ++ " of " ++ show num_avail ++ " cpu cores"
+    putStrLn $ "AI Type: " ++ show G.aiType
 
     args <- getArgs
     case args of

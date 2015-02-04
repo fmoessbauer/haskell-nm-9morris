@@ -1,12 +1,18 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE CPP               #-}
 module NineMorris.AI.Interface (
     convertMove,
     convertBoard,
     calculateIterativeMove )
 where
 
-import qualified NineMorris.Globals as G
-import qualified NineMorris.AI as AI
+#if FUNCTIONALAI
+import qualified NineMorris.AI.Simple as AI
+#else
+import qualified NineMorris.AI.Clever as AI
+#endif
+
+import qualified NineMorris.Globals as G   
 import Data.Text (Text,append)
 import Control.Exception
 import qualified Data.Map as Map
