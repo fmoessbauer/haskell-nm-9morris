@@ -1,8 +1,10 @@
+{-# LANGUAGE DeriveGeneric #-}
 {- AI based on this implementation https://hackage.haskell.org/package/hsqml-demo-morris -}
 
 module NineMorris.AI.Simple where
 
 import Control.DeepSeq
+import GHC.Generics
 import Data.Word
 import Data.Word.Odd
 import Data.Bits
@@ -18,7 +20,7 @@ import qualified Control.Parallel.Strategies as S
 
 newtype Board = Board Word64 deriving (Eq, Ord, Show)
 
-newtype Position = Position Int deriving (Eq, Ord, Show)
+newtype Position = Position Int deriving (Eq, Ord, Show, Generic)
 
 instance NFData Position
 

@@ -162,10 +162,20 @@ threePiecePosMap =
     foldr (\p -> Map.insert p (fromJust $ Map.lookup p adjacencyMap)) Map.empty cornerPositions
 -}
 
-getPlayerPieces :: Player -> Board -> [Position]
-getPlayerPieces player board =
+getPlayerPieces' :: Player -> Board -> [Position]
+getPlayerPieces' player board =
     let list = filter (\p -> Just player == getBoardPosition p board) allPositions
     in list --`S.using` S.rpar
+
+getPlayerPieces :: Player -> Board -> [Position]
+getPlayerPieces player (Board rawBoard) =
+    let
+        playerBoard = (.&.) rawBoard $ playerMask player
+        offset      = case player of
+                           Red   -> 0
+                           Black -> 1
+    in map Position $ filter (\p -> testBit playerBoard (p*2+offset)) [0..23]
+        
     
 getNumPlayerPieces :: Player -> Board -> Int
 getNumPlayerPieces player (Board rawBoard) = popCount $ (.&.) rawBoard $ playerMask player
@@ -190,7 +200,7 @@ getPlayerMills player board =
         listToPosList :: Int -> [Bool] -> [[Position]]
         listToPosList pos (True:xs)  = (indexToPos pos) : (listToPosList (pos+1) xs)
         listToPosList pos (False:xs) = listToPosList (pos+1) xs
-        listToPosList pos []         = [[]]
+        listToPosList _   []         = [[]]
         
 getNumPlayerMills :: Player -> Board -> Int
 getNumPlayerMills player board =
@@ -245,9 +255,16 @@ partialToFullMoves player board act1 =
     in if newMills && (not $ null oTakeable)
        then moves else [FullMove act1 Nothing]
 
-placeMoves :: Board -> [FirstAction]
-placeMoves board = map Place $ filter (\p ->
+placeMoves' :: Board -> [FirstAction]
+placeMoves' board = map Place $ filter (\p ->
     isNothing $ getBoardPosition p board) allPositions
+    
+placeMoves :: Board -> [FirstAction]
+placeMoves board@(Board raw) =
+    let
+        opMask  = bordToMask Black board
+        free    = complement $ (.|.) raw opMask
+    in  map Place $ map Position $ filter (\p -> testBit free (p*2)) [0..23]
 
 adjMoves :: Player -> Board -> [FirstAction]
 adjMoves player board = 
@@ -304,8 +321,8 @@ evalBoard player board =
         mb = fromIntegral $ getNumPlayerMills oPlayer board
 
     in case () of
-           _ | pb == bb || pb < 3 -> (Just Red, winValue)
-             | pa == ba || pa < 3 -> (Just Black, -winValue)
+           _ | pb < 3 || pb == bb -> (Just Red, winValue)
+             | pa < 3 || pa == ba -> (Just Black, -winValue)
              | ha > 0    -> (Nothing, 1.44*(ma-mb) + 0.50*(pa-pb) + 0.3*(fa-fb))
              | pa == 3   -> (Nothing, 2*(ma) + 2*(pa-pb))-- 1.00*(ma-mb) + 0.70*(pa-pb)) 
              | otherwise -> (Nothing, 1.34*(ma-mb) - 0.31*(ba-bb) + 0.34*(pa-pb)) -- + 0.3*(fa-fb)
