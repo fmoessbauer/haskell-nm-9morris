@@ -174,7 +174,7 @@ getPlayerPieces player (Board rawBoard) =
         offset      = case player of
                            Red   -> 0
                            Black -> 1
-    in map Position $ filter (\p -> testBit playerBoard (p*2+offset)) [0..23]
+    in filter (\(Position p) -> testBit playerBoard (p*2+offset)) allPositions
         
     
 getNumPlayerPieces :: Player -> Board -> Int
@@ -207,6 +207,13 @@ getNumPlayerMills player board =
     let
         playerBoard = bordToMask player board
     in  foldr (\mask -> if ((testMill playerBoard mask) == 3) then (+1) else (+0)) 0 millMasks
+
+getFreePositions :: Board -> [Position]
+getFreePositions board@(Board raw) = 
+    let
+        opMask  = bordToMask Black board
+        free    = complement $ (.|.) raw opMask
+    in filter (\(Position p) -> testBit free (p*2)) allPositions
 
 -- | converts a Board into a mask shiftet so that the even bits belong to the given player
 bordToMask :: Player -> Board -> Mask
@@ -260,11 +267,7 @@ placeMoves' board = map Place $ filter (\p ->
     isNothing $ getBoardPosition p board) allPositions
     
 placeMoves :: Board -> [FirstAction]
-placeMoves board@(Board raw) =
-    let
-        opMask  = bordToMask Black board
-        free    = complement $ (.|.) raw opMask
-    in  map Place $ map Position $ filter (\p -> testBit free (p*2)) [0..23]
+placeMoves board = map Place $ getFreePositions board
 
 adjMoves :: Player -> Board -> [FirstAction]
 adjMoves player board = 
@@ -281,13 +284,19 @@ blockedPiecesCnt player board =
         fromJust $ Map.lookup p adjacencyMap) $
     getPlayerPieces player board
 
-jmpMoves :: Player -> Board -> [FirstAction]
-jmpMoves player board =
+jmpMoves' :: Player -> Board -> [FirstAction]
+jmpMoves' player board =
     concatMap (\p -> map (\p' -> Move p p') $
         filter (isNothing . flip getBoardPosition board) $
         filter (\possible -> isNothing $ getBoardPosition possible board) allPositions) $
     getPlayerPieces player board
-
+    
+jmpMoves :: Player -> Board -> [FirstAction]
+jmpMoves player board =
+    let
+        myPos   = getPlayerPieces player board
+    in concatMap (\p -> map (\p' -> Move p p') $ getFreePositions board) $ myPos
+    
 legalMoves :: Board -> [Move]
 legalMoves board =
     let player  = getBoardNextPlayer board

@@ -53,7 +53,7 @@ executable haskell-nm-9morris
   if flag(debug)
     ghc-options:       -Wall -fno-warn-unused-do-bind -threaded -O2 -auto-all -caf-all -debug -rtsopts -eventlog -with-rtsopts -N
   if flag(prof){
-    ghc-options:       -Wall -fno-warn-unused-do-bind -threaded -O2 -auto-all -caf-all -debug -rtsopts -with-rtsopts -N
+    ghc-options:       -Wall -fno-warn-unused-do-bind -threaded -O2 -auto-all -caf-all -fhpc -debug -rtsopts -with-rtsopts -N
     ghc-prof-options:  -fprof-auto
   }
   if flag(functionalai)
