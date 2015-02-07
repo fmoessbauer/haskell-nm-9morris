@@ -149,7 +149,7 @@ playerMask pl =
         mask = (.&.) hideHandCount $ foldr (\pos -> (flip $ setBit) pos) 0 [0,2..47]
     in case pl of
         Red   -> mask
-        Black -> shiftR mask 1
+        Black -> shiftL mask 1
 
 millMasks :: [Mask]
 millMasks =
