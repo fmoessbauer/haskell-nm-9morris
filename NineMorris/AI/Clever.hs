@@ -141,20 +141,21 @@ adjacencyMap =
     in foldr (\(k,v) m -> Map.insertWith' (++) k [v] m) Map.empty ps
 
 hideHandCount :: Mask
-hideHandCount = complement $ foldr (\pos -> (flip $ setBit) pos) 0 [48..63]
+hideHandCount =  complement $ foldr (\pos -> (flip $ setBit) pos) 0 [48..63]
+
+rawPlayerMask :: Mask
+rawPlayerMask = (.&.) hideHandCount $ foldr (\pos -> (flip $ setBit) pos) 0 [0,2..47]
 
 playerMask :: Player -> Mask
 playerMask pl =
-    let
-        mask = (.&.) hideHandCount $ foldr (\pos -> (flip $ setBit) pos) 0 [0,2..47]
-    in case pl of
-        Red   -> mask
-        Black -> shiftL mask 1
+    case pl of
+        Red   -> rawPlayerMask
+        Black -> shiftR rawPlayerMask 1
 
 millMasks :: [Mask]
 millMasks =
     let positions = rawMillPos
-    in map (\mill -> foldr (\pos -> (flip $ setBit) (pos*2)) 0 mill) positions
+    in map (\mill ->  foldr (\pos -> (flip $ setBit) (pos*2)) 0 mill) positions
     
 {- prepared for better heuristic function
 threePiecePosMap :: Map Position [Position]
@@ -165,7 +166,7 @@ threePiecePosMap =
 getPlayerPieces' :: Player -> Board -> [Position]
 getPlayerPieces' player board =
     let list = filter (\p -> Just player == getBoardPosition p board) allPositions
-    in list --`S.using` S.rpar
+    in list
 
 getPlayerPieces :: Player -> Board -> [Position]
 getPlayerPieces player (Board rawBoard) =
@@ -192,7 +193,8 @@ getPlayerMills player board =
     let
         playerBoard = bordToMask player board
         logicResult = map (\mask -> (testMill playerBoard mask) == 3) millMasks
-    in filter (not.null) $ listToPosList 0 logicResult
+        result      = filter (not.null) $ listToPosList 0 logicResult
+    in result `S.using` S.rdeepseq
     where
         indexToPos :: Int -> [Position]
         indexToPos pos = millPositions !! pos
@@ -206,7 +208,7 @@ getNumPlayerMills :: Player -> Board -> Int
 getNumPlayerMills player board =
     let
         playerBoard = bordToMask player board
-    in  foldr (\mask -> if ((testMill playerBoard mask) == 3) then (+1) else (+0)) 0 millMasks
+    in  foldl' (\acc mask -> if ((testMill playerBoard mask) == 3) then (acc+1) else (acc+0)) 0 millMasks
 
 getFreePositions :: Board -> [Position]
 getFreePositions board@(Board raw) = 
