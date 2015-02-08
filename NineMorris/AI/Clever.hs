@@ -144,13 +144,13 @@ hideHandCount :: Mask
 hideHandCount =  complement $ foldr (\pos -> (flip $ setBit) pos) 0 [48..63]
 
 rawPlayerMask :: Mask
-rawPlayerMask = (.&.) hideHandCount $ foldr (\pos -> (flip $ setBit) pos) 0 [0,2..47]
+rawPlayerMask = (.&.) hideHandCount $ foldr (\pos -> (flip $ setBit) pos) 0 [0,2..49]
 
 playerMask :: Player -> Mask
 playerMask pl =
     case pl of
         Red   -> rawPlayerMask
-        Black -> shiftR rawPlayerMask 1
+        Black -> shiftL rawPlayerMask 1
 
 millMasks :: [Mask]
 millMasks =
