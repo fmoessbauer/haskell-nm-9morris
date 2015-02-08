@@ -80,6 +80,20 @@ handCountBitIdx :: Player -> Int
 handCountBitIdx Red = 48
 handCountBitIdx Black = 52
 
+-- Detect mills closed in last move
+
+millClosedBitIdx :: Int
+millClosedBitIdx = 47
+
+setMillClosed :: Board -> Board
+setMillClosed (Board rawBoard) = Board $ setBit rawBoard millClosedBitIdx
+
+isMillClosed :: Board -> Bool
+isMillClosed (Board rawBoard) = testBit rawBoard millClosedBitIdx
+
+clearMillClosed :: Board -> Board
+clearMillClosed (Board rawBoard) = Board $ clearBit rawBoard millClosedBitIdx
+
 setBoardHandCount :: Word4 -> Player -> Board -> Board
 setBoardHandCount count player (Board rawBoard) =
     let idx   = handCountBitIdx player
@@ -208,14 +222,51 @@ getNumPlayerMills :: Player -> Board -> Int
 getNumPlayerMills player board =
     let
         playerBoard = bordToMask player board
-    in  foldl' (\acc mask -> if ((testMill playerBoard mask) == 3) then (acc+1) else (acc+0)) 0 millMasks
+    in  foldl' (\acc mask -> if ((testMill playerBoard mask) == 3) then (acc+1) else acc) 0 millMasks
 
-getFreePositions :: Board -> [Position]
-getFreePositions board@(Board raw) = 
+getCombinedBoardMask :: Board -> Mask
+getCombinedBoardMask board@(Board raw) = 
     let
         opMask  = bordToMask Black board
-        free    = complement $ (.|.) raw opMask
-    in filter (\(Position p) -> testBit free (p*2)) allPositions
+    in (.|.) raw opMask
+
+getFreePositions :: Board -> [Position]
+getFreePositions board = 
+    let
+        combBoard = getCombinedBoardMask board
+    in filter (\(Position p) -> not $ testBit combBoard (p*2)) allPositions
+
+getTwoPieceConf :: Player -> Board -> [[Position]]
+getTwoPieceConf player board =
+    let
+        playerBoard = bordToMask player board
+        combBoard   = getCombinedBoardMask board
+    in  snd $ foldl' 
+        (\(ind,acc) mask -> if (
+            ((testMill playerBoard mask) == 2) && (not $ testMill combBoard mask == 3))
+            then (ind+1,(testMask ind player board) : acc) else (ind+1,acc))
+        (0,[]) millMasks
+    where
+        testMask :: Int -> Player -> Board -> [Position]
+        testMask ind pl b
+            | getNumPlayerPieces pl b == 3 || getBoardHandCount pl b > 0 = 
+                filter (\p -> isJust $ getBoardPosition p board) $ millPositions !! ind
+            | otherwise =
+                let
+                    curMill  = millPositions !! ind
+                    free     = head $ filter (\p -> isNothing $ getBoardPosition p board) $ curMill
+                    adj      = fromMaybe [] $ Map.lookup free adjacencyMap
+                    possible = elem (Just pl) $ map (flip getBoardPosition board) $ adj  
+                in if possible then delete free curMill else []
+
+getNumPieceConf :: [[Position]] -> Int
+getNumPieceConf dat = 
+    let
+        flat    = concat $ dat
+        orgSize = length $ flat
+        newSize = length $ nub flat
+    in orgSize - newSize
+
 
 -- | converts a Board into a mask shiftet so that the even bits belong to the given player
 bordToMask :: Player -> Board -> Mask
@@ -235,11 +286,12 @@ playFirstAction player (Move p p') board =
 
 playSecondAction :: SecondAction -> Board -> Board
 playSecondAction (Take pos) =
-    setBoardPosition Nothing pos
+    (setBoardPosition Nothing pos).setMillClosed
 
 playNext :: Board -> Board
 playNext board =
-    setBoardNextPlayer (opponent $ getBoardNextPlayer board) board
+    setBoardNextPlayer (opponent $ getBoardNextPlayer board) $
+    clearMillClosed board
 
 playMove :: Move -> Board -> Board
 playMove move board =
@@ -317,26 +369,40 @@ winValue = 1000.0
 evalBoard :: Player -> Board -> (Maybe Player, Float)
 evalBoard player board =
     let 
-        ha = fromIntegral (getBoardHandCount player board)
-        hb = fromIntegral (getBoardHandCount player board)
+        ha   = fromIntegral (getBoardHandCount player board)
+        tPCA = getTwoPieceConf player board
+        ma   = getPlayerMills player board
 
-        pa = ha  + (fromIntegral $ getNumPlayerPieces player board)
-        fa = fromIntegral $ length $ adjMoves player board
-        ba = fromIntegral $ blockedPiecesCnt player board -- blocked A pieces
-        ma = fromIntegral $ getNumPlayerMills player board
+        pa   = ha  + (fromIntegral $ getNumPlayerPieces player board)  -- (4) number pieces
+        fa   = fromIntegral $ length $ adjMoves player board           -- free adjacent positions
+        ba   = fromIntegral $ blockedPiecesCnt player board            -- (3) blocked A pieces
+        mca  = fromIntegral $ length ma                                -- (2) mills count
+        twoa = fromIntegral $ length tPCA                              -- (5) two piece combinations
+        thra = fromIntegral $ getNumPieceConf tPCA                     -- (6) three piece combinations
+        dbma = fromIntegral $ getNumPieceConf ma                       -- (7) double morris
 
         oPlayer = opponent player
-        pb = hb + (fromIntegral $ getNumPlayerPieces oPlayer board)
-        fb = fromIntegral $ length $ adjMoves oPlayer board
-        bb = fromIntegral $ blockedPiecesCnt oPlayer board -- blocked B pieces
-        mb = fromIntegral $ getNumPlayerMills oPlayer board
+
+        hb   = fromIntegral (getBoardHandCount oPlayer board)
+        tPCB = getTwoPieceConf oPlayer board
+        mb   = getPlayerMills oPlayer board
+        
+        pb   = hb + (fromIntegral $ getNumPlayerPieces oPlayer board)  -- (4) number pieces
+        fb   = fromIntegral $ length $ adjMoves oPlayer board          -- free adjacent positions
+        bb   = fromIntegral $ blockedPiecesCnt oPlayer board           -- (3) blocked B pieces
+        mcb  = fromIntegral $ length mb                                -- (2) mills count
+        twob = fromIntegral $ length tPCB                              -- (5) two piece combinations
+        thrb = fromIntegral $ getNumPieceConf tPCB                     -- (6) three piece combinations
+        dbmb = fromIntegral $ getNumPieceConf mb                       -- (7) double morris
+
+        millClosed = if isMillClosed board then 1 else 0               -- (1) Mill closed in last move
 
     in case () of
            _ | pb < 3 || pb == bb -> (Just Red, winValue)
              | pa < 3 || pa == ba -> (Just Black, -winValue)
-             | ha > 0    -> (Nothing, 1.44*(ma-mb) + 0.50*(pa-pb) + 0.3*(fa-fb))
-             | pa == 3   -> (Nothing, 2*(ma) + 2*(pa-pb))-- 1.00*(ma-mb) + 0.70*(pa-pb)) 
-             | otherwise -> (Nothing, 1.34*(ma-mb) - 0.31*(ba-bb) + 0.34*(pa-pb)) -- + 0.3*(fa-fb)
+             | ha > 0    -> (Nothing, 18 * millClosed + 26 * (mca-mcb) + 1  * (bb-ba) + 9  * (pa-pb) + 10 * (twoa-twob) + 7 * (thra-thrb) + 1 * (fa-fb))
+             | pa == 3   -> (Nothing, 16 * millClosed + 10 * (twoa-twob) + 1 * (thra-thrb))
+             | otherwise -> (Nothing, 14 * millClosed + 43 * (mca-mcb) + 10 * (bb-ba) + 11 * (pa-pb) + 8  * (dbma-dbmb) + 1 * (twoa-twob))
              -- | otherwise -> (Nothing, 1.0*(pa-pb)+0.2*(fa-fb)+0.8*(ma-mb)) 
              -- heuristic based on https://kartikkukreja.wordpress.com/2014/03/17/heuristicevaluation-function-for-nine-mens-morris/
              -- Evaluation function for Phase 1 = 18 * (1) + 26 * (2) + 1 * (3) + 9 * (4) + 10 * (5) + 7 * (6)
