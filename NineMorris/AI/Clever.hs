@@ -3,7 +3,7 @@
 
 module NineMorris.AI.Clever where
 
-import Control.DeepSeq
+import Control.DeepSeq()
 import GHC.Generics
 import Data.Word
 import Data.Word.Odd
@@ -12,6 +12,8 @@ import Data.Maybe
 import Data.List
 import Data.Map (Map)
 import qualified Data.Map as Map
+import Data.STRef
+import Control.Monad.ST
 --import Debug.Trace
 --import Numeric
 import qualified NineMorris.Globals as G
@@ -23,7 +25,7 @@ type Mask = Word64
 
 newtype Position = Position Int deriving (Eq, Ord, Show, Generic)
 
-instance NFData Position
+instance S.NFData Position
 
 data FirstAction
     = Place Position
@@ -44,7 +46,7 @@ data Move = FullMove {
     sndAction :: Maybe SecondAction}
     deriving (Eq, Show)
 
-data Player = Red | Black deriving (Eq, Show)
+data Player = Red | Black deriving (Eq, Ord, Show)
 
 -- prefere take moves
 instance Ord Move where
@@ -52,6 +54,14 @@ instance Ord Move where
         | (isNothing a) && (isJust b) = LT
         | otherwise                 = EQ
 
+data AiState = AiState {
+    playerPieces :: (Map (Player,Board) [Position])
+}
+
+initAI :: ST s (STRef s AiState)
+initAI = do
+    st <- newSTRef $ AiState Map.empty
+    return st
 
 opponent :: Player -> Player
 opponent Red = Black
@@ -185,13 +195,30 @@ getPlayerPieces' player board =
 getPlayerPieces :: Player -> Board -> [Position]
 getPlayerPieces player (Board rawBoard) =
     let
-        playerBoard = (.&.) rawBoard $ playerMask player
         offset      = case player of
                            Red   -> 0
                            Black -> 1
-    in filter (\(Position p) -> testBit playerBoard (p*2+offset)) allPositions
-        
-    
+        playerBoard = (.&.) rawBoard $ playerMask player
+        result      = filter (\(Position p) -> testBit playerBoard (p*2+offset)) allPositions
+    in result `S.using` S.rdeepseq
+
+{-
+getPlayerPiecesMem :: Player -> Board -> [Position]
+getPlayerPiecesMem player board = runST $ do
+    fun player board
+    where
+        fun player board = do
+            state <- playerPiecesMem
+            memo <- readSTRef state
+            case Map.lookup (player,board) memo of
+                 (Just res) -> return res
+                 Nothing    -> do
+                     pieces <- return $ getPlayerPieces player board
+                     memo <- readSTRef state
+                     writeSTRef state $ Map.insert (player,board) pieces memo
+                     return pieces
+  
+-}
 getNumPlayerPieces :: Player -> Board -> Int
 getNumPlayerPieces player (Board rawBoard) = popCount $ (.&.) rawBoard $ playerMask player
     
