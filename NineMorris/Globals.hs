@@ -1,5 +1,6 @@
 {-# LANGUAGE DeriveDataTypeable #-}
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings  #-}
+{-# LANGUAGE CPP                #-}
 
 module NineMorris.Globals where
 
@@ -17,7 +18,7 @@ internalVersion = "1.0"         :: Text
 playerNumber    = ""            :: Text
 searchDepth     = 2             :: Int
 maxSearchDepth  = 20            :: Int
-aiTimeoutBuffer = 700           :: Int
+aiTimeoutBuffer = 200           :: Int
 positions       = [ "A0","A1","A2",
                     "B0","B1","B2",
                     "C0","C1","C2",
@@ -30,6 +31,16 @@ positions       = [ "A0","A1","A2",
 toAiPositions     = Map.fromList $ zipWith (\a b -> (a,b)) positions ([0..23]::[Int]) :: Map.Map Text Int
 toServerPositions = Map.fromList $ zipWith (\a b -> (b,a)) positions ([0..23]::[Int]) :: Map.Map Int Text
 
+-- this seems to be redundant, but I guess that's the only way to achive low coupling
+aiType :: TypeOfAI
+aiType          =
+#if FUNCTIONALAI
+    SIMPLE
+#else
+    CLEVER
+#endif
+
+
 data Config         = Config {hostname::Text, port::Int, gamekind::Text} deriving (Show)
 data PlayerInfo     = PlayerInfo {pid::Int, pname::Text, pstatus::PlayerStatus} deriving (Show)
 data StoneInfo      = StoneInfo {spid::Int, snumber::Int, sposition::Text} deriving (Show)
@@ -37,6 +48,7 @@ data PlayerStatus   = READY | NOT_READY deriving (Show)
 data GamePhase      = GP_WAIT | GP_MOVE Int | GP_GAMEOVER (Maybe (Int, Text))
 type Gameid         = String
 
+data TypeOfAI       = SIMPLE | CLEVER deriving (Show)
 {- Game Excemptions -}
 data MorrisException = GameIdNotValid | PlayerIdNotValid | FileNotFound | ConfigNotValid Text | ProtocolError Text | InternalParserError String | AiException | TimeOutAI
     deriving (Show, Typeable)
