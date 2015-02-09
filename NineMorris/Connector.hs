@@ -1,5 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE NamedFieldPuns    #-}
+{-# LANGUAGE CPP               #-}
 module NineMorris.Connector (performConnection) where
 
 import qualified NineMorris.Globals as G
@@ -16,8 +17,12 @@ import Control.Monad.Fix (fix)
 import Data.Text (Text,pack,unpack,append)
 import qualified Data.Text.IO as TextIO
 import NineMorris.Parsers.Protocol
-import NineMorris.AI.Interface
 
+#if FUNCTIONALAI
+import NineMorris.AI.SimpleInterface
+#else
+import NineMorris.AI.CleverInterface
+#endif
 
 performConnection :: G.Gameid -> Config -> Maybe Int -> IO ()
 performConnection gid cnf@Config{hostname, port, gamekind} player = do
