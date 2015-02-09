@@ -207,16 +207,22 @@ getPlayerMills player board =
     let
         playerBoard = bordToMask player board
         logicResult = map (\mask -> (testMill playerBoard mask) == 3) millMasks
-        result      = filter (not.null) $ listToPosList 0 logicResult
+        --result      = filter (not.null) $ listToPosList 0 logicResult
+        result      = snd $ foldl' (listToPosList) (0,[]) logicResult
     in result `S.using` S.rdeepseq
     where
         indexToPos :: Int -> [Position]
         indexToPos pos = millPositions !! pos
         
+        listToPosList :: (Int,[[Position]]) -> Bool -> (Int,[[Position]])
+        listToPosList (ind, acc) True  = (ind+1,(indexToPos ind) : acc)
+        listToPosList (ind, acc) False = (ind+1,acc)
+        {-
         listToPosList :: Int -> [Bool] -> [[Position]]
         listToPosList pos (True:xs)  = (indexToPos pos) : (listToPosList (pos+1) xs)
         listToPosList pos (False:xs) = listToPosList (pos+1) xs
         listToPosList _   []         = [[]]
+        -}
         
 getNumPlayerMills :: Player -> Board -> Int
 getNumPlayerMills player board =
@@ -355,7 +361,7 @@ legalMoves :: Board -> [Move]
 legalMoves board =
     let player  = getBoardNextPlayer board
         inHand  = getBoardHandCount player board > 0
-        jmpAble = (length $ getPlayerPieces player board) == 3
+        jmpAble = (getNumPlayerPieces player board) == 3
         moves = if inHand
                 then placeMoves board
                 else if not $ jmpAble
@@ -400,9 +406,9 @@ evalBoard player board =
     in case () of
            _ | pb < 3 || pb == bb -> (Just Red, winValue)
              | pa < 3 || pa == ba -> (Just Black, -winValue)
-             | ha > 0    -> (Nothing, 18 * millClosed + 26 * (mca-mcb) + 1  * (bb-ba) + 9  * (pa-pb) + 10 * (twoa-twob) + 7 * (thra-thrb) + 1 * (fa-fb))
+             | ha > 0    -> (Nothing, 18 * millClosed + 26 * (mca-mcb) + 1  * (bb-ba) + 6  * (pa-pb) + 12 * (twoa-twob) + 7 * (thra-thrb) + 1 * (fa-fb))
              | pa == 3   -> (Nothing, 16 * millClosed + 10 * (twoa-twob) + 1 * (thra-thrb))
-             | otherwise -> (Nothing, 14 * millClosed + 43 * (mca-mcb) + 10 * (bb-ba) + 11 * (pa-pb) + 8  * (dbma-dbmb) + 1 * (twoa-twob))
+             | otherwise -> (Nothing, 14 * millClosed + 43 * (mca-mcb) + 10 * (bb-ba) + 8 * (pa-pb) + 7 * (twoa-twob) + 42 * (dbma-dbmb))
              -- | otherwise -> (Nothing, 1.0*(pa-pb)+0.2*(fa-fb)+0.8*(ma-mb)) 
              -- heuristic based on https://kartikkukreja.wordpress.com/2014/03/17/heuristicevaluation-function-for-nine-mens-morris/
              -- Evaluation function for Phase 1 = 18 * (1) + 26 * (2) + 1 * (3) + 9 * (4) + 10 * (5) + 7 * (6)
