@@ -44,7 +44,10 @@ convertBoard player stones = AI.setBoardNextPlayer AI.Black $ foldl (convertSing
 {- I am Black -}
 convertSingleStone :: G.PlayerInfo -> AI.Board -> G.StoneInfo -> AI.Board
 convertSingleStone (G.PlayerInfo {G.pid=pid}) (board) (G.StoneInfo {G.spid=playerId, G.sposition=pos})
-    | pos == "A"       = AI.setBoardPosition Nothing (convertToInternalPos pos) board
+    | pos == "A"       = board
+    | pos == "C"       = if playerId == pid
+                            then (AI.reduceBoardHandCount AI.Black) board
+                            else (AI.reduceBoardHandCount AI.Red)   board
     | playerId == pid  = (AI.reduceBoardHandCount AI.Black) $ (AI.setBoardPosition (Just AI.Black) (convertToInternalPos pos) board)
     | otherwise        = (AI.reduceBoardHandCount AI.Red) $ (AI.setBoardPosition (Just AI.Red)   (convertToInternalPos pos) board)
 
@@ -53,7 +56,7 @@ calculateIterativeMove (moveStore,moveSave) board depth = do
     --putStrLn "calculateIterativeMove"
     m <- tryTakeMVar moveStore
     putStrLn $ "Current best: " ++ (show $ m)
-    let realDepth = G.searchDepth + depth
+    let realDepth = G.searchDepth + depth+2
     when (isJust m) $ do
         modifyMVar_ moveSave (\_ -> return $ (fromMaybe Nothing m, realDepth-1))
     if realDepth > G.maxSearchDepth

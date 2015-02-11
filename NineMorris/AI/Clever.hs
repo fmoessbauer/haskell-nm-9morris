@@ -14,11 +14,13 @@ import Data.Map (Map)
 import qualified Data.Map as Map
 import Data.STRef
 import Control.Monad.ST
---import Debug.Trace
+import Debug.Trace
 --import Numeric
 import qualified NineMorris.Globals as G
 import Control.Exception hiding (mask)
 import qualified Control.Parallel.Strategies as S
+import Data.Tree.Game_tree.Game_tree
+import Data.Tree.Game_tree.Negascout_par
 
 newtype Board = Board Word64 deriving (Eq, Ord, Show)
 type Mask = Word64
@@ -46,7 +48,10 @@ data Move = FullMove {
     sndAction :: Maybe SecondAction}
     deriving (Eq, Show)
 
+-- I am Black
 data Player = Red | Black deriving (Eq, Ord, Show)
+
+data Node = Node Board (Maybe Move) deriving (Eq, Ord, Show, Generic)
 
 -- prefere take moves
 instance Ord Move where
@@ -54,14 +59,29 @@ instance Ord Move where
         | (isNothing a) && (isJust b) = LT
         | otherwise                 = EQ
 
-data AiState = AiState {
-    playerPieces :: (Map (Player,Board) [Position])
-}
+instance S.NFData  Node
+instance Game_tree Node where
+    is_terminal (Node board move) = 
+        let
+            player    = getBoardNextPlayer board
+            handcount = getBoardHandCount player board
+            pieces    = fromIntegral $ getNumPlayerPieces player board
+            blocked   = fromIntegral $ blockedPiecesCnt player board
+            pc        = pieces + handcount
+        in pc < 3 || pc == blocked
+    
+    node_value (Node board move) =
+        let
+            player = getBoardNextPlayer board
+            sig    = 1
+        in sig * (round $ snd $ evalBoard player board)
+        
+    children (Node board move) =
+        let
+            moves = legalMoves board
+            res = map (\move -> Node (playMove move board) (Just move)) moves
+        in if res == [] then trace ("FEHLER: "++ (show $ board)) [] else res
 
-initAI :: ST s (STRef s AiState)
-initAI = do
-    st <- newSTRef $ AiState Map.empty
-    return st
 
 opponent :: Player -> Player
 opponent Red = Black
@@ -122,6 +142,9 @@ setBoardNextPlayer player (Board rawBoard) =
         adjBit Black = flip setBit 63
     in Board $ adjBit player rawBoard
 
+getBoardPlayer :: Board -> Player
+getBoardPlayer b = opponent $ getBoardNextPlayer b
+    
 getBoardNextPlayer :: Board -> Player
 getBoardNextPlayer (Board rawBoard) =
     let toPlayer False = Red
@@ -202,23 +225,7 @@ getPlayerPieces player (Board rawBoard) =
         result      = filter (\(Position p) -> testBit playerBoard (p*2+offset)) allPositions
     in result `S.using` S.rdeepseq
 
-{-
-getPlayerPiecesMem :: Player -> Board -> [Position]
-getPlayerPiecesMem player board = runST $ do
-    fun player board
-    where
-        fun player board = do
-            state <- playerPiecesMem
-            memo <- readSTRef state
-            case Map.lookup (player,board) memo of
-                 (Just res) -> return res
-                 Nothing    -> do
-                     pieces <- return $ getPlayerPieces player board
-                     memo <- readSTRef state
-                     writeSTRef state $ Map.insert (player,board) pieces memo
-                     return pieces
-  
--}
+
 getNumPlayerPieces :: Player -> Board -> Int
 getNumPlayerPieces player (Board rawBoard) = popCount $ (.&.) rawBoard $ playerMask player
     
@@ -312,7 +319,7 @@ testMill rawBoard mask = popCount $ (.&.) rawBoard mask
 playFirstAction :: Player -> FirstAction -> Board -> Board
 playFirstAction player (Place p) board =
     setBoardPosition (Just player) p $
-    setBoardHandCount (getBoardHandCount player board - 1) player board
+    reduceBoardHandCount player board
 playFirstAction player (Move p p') board =
     setBoardPosition (Just player) p' $
     setBoardPosition Nothing p board
@@ -434,7 +441,7 @@ evalBoard player board =
            _ | pb < 3 || pb == bb -> (Just Red, winValue)
              | pa < 3 || pa == ba -> (Just Black, -winValue)
              | ha > 0    -> (Nothing, 18 * millClosed + 26 * (mca-mcb) + 1  * (bb-ba) + 6  * (pa-pb) + 12 * (twoa-twob) + 7 * (thra-thrb) + 1 * (fa-fb))
-             | pa == 3   -> (Nothing, 16 * millClosed + 10 * (twoa-twob) + 1 * (thra-thrb))
+             | pa == 3   -> (Nothing, 40 * millClosed + 10 * (twoa-twob) + 1 * (thra-thrb))
              | otherwise -> (Nothing, 14 * millClosed + 43 * (mca-mcb) + 10 * (bb-ba) + 8 * (pa-pb) + 7 * (twoa-twob) + 42 * (dbma-dbmb))
              -- | otherwise -> (Nothing, 1.0*(pa-pb)+0.2*(fa-fb)+0.8*(ma-mb)) 
              -- heuristic based on https://kartikkukreja.wordpress.com/2014/03/17/heuristicevaluation-function-for-nine-mens-morris/
@@ -457,8 +464,8 @@ evalTree board depth alpha beta =
         next [] alpha' = alpha'
     in if terminal then value else (next moves alpha)
 
-aiMove :: Int -> Map Board Float -> Board -> Maybe Move
-aiMove depth bias board =
+aiMove' :: Int -> Map Board Float -> Board -> Maybe Move
+aiMove' depth bias board =
     let moves = legalMoves board
         moveVals = zip moves $ S.parMap S.rpar (\m ->
             let board' = playMove m board
@@ -469,3 +476,11 @@ aiMove depth bias board =
             then (Just m,v)
             else (if v>bv then (Just m,v) else b)) (Nothing,-1/0) moveVals
         in move `S.using` S.rseq
+        
+        
+aiMove :: Int -> Map Board Float -> Board -> Maybe Move
+aiMove depth bias board =
+    let
+        (list,value) = alpha_beta_search_par (Node board Nothing) (depth)
+        (Node b m) = head $! drop 1 $! list
+    in m `S.using` S.rseq
