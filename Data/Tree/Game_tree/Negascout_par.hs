@@ -19,9 +19,9 @@
 
 module Data.Tree.Game_tree.Negascout_par (
                                  -- * Access
+                                 parallelize,
                                  negamax,
                                  alpha_beta_search,
-                                 alpha_beta_search_par,
                                  principal_variation_search,
                                  negascout
                  ) where
@@ -155,8 +155,8 @@ alpha_beta alpha beta node depth
     | is_terminal node || depth == 0 = ([node], node_value node)
     | otherwise                      =  let
                                             result = case children node of
-                                                (c:cs) -> (node:pvm, pvv)
-                                                    where (pvm, pvv) = negaLevel ([], (minBound :: Int) + 2) alpha beta (c:cs)
+                                                cc@(c:cs) -> (node:pvm, pvv)
+                                                    where (pvm, pvv) = negaLevel ([], (minBound :: Int) + 2) alpha beta (cc)
                                                 _      -> throw Pattern_match_ex
                                         in result
     where negaLevel prev_best@(_, old_v) prev_alpha beta' (n:nn) | old_v < beta'
@@ -169,24 +169,33 @@ alpha_beta alpha beta node depth
           neg (m, v) = (m, -v)
         
 
-alpha_beta_search_par ::(S.NFData a, Game_tree a) => a -- ^ State to be evaluated
-           -> Int               -- ^ Search this deep
-           -> ([a], Int)        -- ^ (Principal variation, Score)
-alpha_beta_search_par node depth =
+parallelize ::(S.NFData a, Game_tree a) => 
+              (a -> Int -> ([a], Int))  -- ^ search function to parallelize
+           -> a                         -- ^ State to be evaluated
+           -> Int                       -- ^ Search this deep
+           -> [([a], Int)]              -- ^ (Principal variation, Score) ordered by move value
+parallelize f node depth =
     let
         nodes = children node
-        res   = S.parMap S.rpar (\n -> alpha_beta_search n (depth-1)) $! nodes
-        first = ([node],maxBound)
-        best  = inject node $! (foldl (getBest) ([],maxBound) res)
+        res   = S.parMap S.rdeepseq (\n -> (f n (depth-1))) $ nodes
+        first = ([node],minBound)
+        --best  = inject node $! (foldl' (getBest) first res)
+        set   = sortBy (comp) $ map (\n -> inject node $ invert n) res
     in if is_terminal node
-          then first
-          else best
+          then [first]
+          else set --best
     where
         getBest :: Game_tree a => ([a], Int) -> ([a], Int) -> ([a], Int)
         getBest (bestn, bestv) (n, v) = 
-            if v<bestv 
-               then (n, v)
+            if -v > bestv    -- v has to be inverted, because level 1 is a minimising level
+               then (n, -v)
                else (bestn, bestv)
         inject :: Game_tree a => a -> ([a], Int) -> ([a], Int)
-        inject a (n,v) = (a:n,-v)
+        inject a (n,v) = (a:n,v)
+        
+        invert :: Game_tree a => ([a], Int) -> ([a], Int)
+        invert (n,v) = (n,-v) 
+        
+        comp :: ([a], Int) -> ([a], Int) -> Ordering
+        comp (_,a) (_,b) = compare a b
 

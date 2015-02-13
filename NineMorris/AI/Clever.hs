@@ -481,6 +481,13 @@ aiMove' depth bias board =
 aiMove :: Int -> Map Board Float -> Board -> Maybe Move
 aiMove depth bias board =
     let
-        (list,value) = alpha_beta_search_par (Node board Nothing) (depth)
+        (list,value) = head $ parallelize (principal_variation_search) (Node board Nothing) (depth)
+        (Node b m) = head $! drop 1 $! list
+    in m `S.using` S.rseq
+    
+aiMoveIterative :: Game_tree a => Int -> Map Board Float -> Board -> [a] -> (Maybe Move, [a])
+aiMoveIterative depth bias moves board =
+    let
+        (list,value) = head $ parallelize (principal_variation_search) (Node board Nothing) (depth)
         (Node b m) = head $! drop 1 $! list
     in m `S.using` S.rseq
