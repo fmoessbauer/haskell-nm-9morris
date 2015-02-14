@@ -31,6 +31,7 @@ import qualified Control.Parallel.Strategies as S
 import Control.Exception
 import Data.Typeable
 import Data.List
+import Debug.Trace
 
 data AlgorithmicException = Pattern_match_ex
     deriving (Show, Typeable)
@@ -50,21 +51,26 @@ negascout node depth = negascout'  ((minBound :: Int) + 1) (maxBound :: Int) nod
 {-# contract principal_variation_search :: Ok -> {depth | depth >= 0} -> {(rs, rv) | not null rs} #-}
 -- | Alpha-beta pruning with null-window search around every move after a move 
 -- that improves alpha has been found
-principal_variation_search :: Game_tree a => a   -- ^ State to be evaluated
+principal_variation_search :: (S.NFData a, Game_tree a) => a   -- ^ State to be evaluated
                            -> Int          -- ^ Search this deep
                            -> ([a], Int)   -- ^ (Principal variation, Score)
-principal_variation_search node depth
-    | is_terminal node || depth == 0 = ([node], node_value node)
-    | otherwise                      = case pvs ((minBound :: Int) + 1) (maxBound :: Int) (children node) depth of
-                                         (pvm, pvv) -> (node:pvm, pvv)
+principal_variation_search node depth = principal_variation_search_par node depth False
 
+principal_variation_search_par :: (S.NFData a, Game_tree a) => a   -- ^ State to be evaluated
+                           -> Int          -- ^ Search this deep
+                           -> Bool         -- ^ Parallelize this stage
+                           -> ([a], Int)   -- ^ (Principal variation, Score)
+principal_variation_search_par node depth parallel
+    | is_terminal node || depth == 0 = ([node], node_value node)
+    | otherwise                      = case pvs ((minBound :: Int) + 1) (maxBound :: Int) (children node) depth parallel of
+                                         (pvm, pvv) -> (node:pvm, pvv)
 {-# contract alpha_beta_search ::  Ok -> {depth | depth >= 0} -> {(rs, rv) | not null rs} #-}
 -- | Normal alpha beta pruning (no window).
-alpha_beta_search ::Game_tree a => a -- ^ State to be evaluated
+alpha_beta_search ::(S.NFData a, Game_tree a) => a -- ^ State to be evaluated
            -> Int               -- ^ Search this deep
            -> ([a], Int)        -- ^ (Principal variation, Score)
 alpha_beta_search node depth =
-    alpha_beta ((minBound :: Int) + 1) (maxBound :: Int) node depth
+    alpha_beta ((minBound :: Int) + 1) (maxBound :: Int) node depth False
 
 {-# contract negamax :: Ok -> {depth | depth >= 0} -> {(rs, rv) | not null rs} #-}
 -- | Plain negamax (= minimax with negative scores at alternate levels).
@@ -125,8 +131,8 @@ negascout'  alpha beta node depth
 --
 -- The search continues as long as alpha < pvs < beta.
 -- As soon pvs hits one these bounds the search stops and returns best.
-pvs :: Game_tree a => Int -> Int -> [a] -> Int -> ([a], Int)
-pvs alpha beta (c:cs) depth = case negpvs (-beta) (-alpha) c d of
+pvs :: (S.NFData a, Game_tree a) => Int -> Int -> [a] -> Int -> Bool -> ([a], Int)
+pvs alpha beta (c:cs) depth p = case negpvs (-beta) (-alpha) c d of
                                 best -> negaLevel best alpha beta cs
     where d = depth - 1
           negaLevel prev_best@(_, old_v) prev_alpha beta' (n:nn) | old_v < beta'
@@ -140,28 +146,36 @@ pvs alpha beta (c:cs) depth = case negpvs (-beta) (-alpha) c d of
           negaLevel best _ _ _     = best                                 
           negpvs alpha'' beta'' node d'
               | is_terminal node || d' == 0 = ([node], - (node_value node))
-              | otherwise = case children node of
-                              nn' -> (node:pvm, -pvv)
-                                  where (pvm, pvv) = pvs alpha'' beta'' nn' d'
-pvs _ _ _ _ = throw Pattern_match_ex
+              | otherwise = let
+                                nodes  = children node
+                                result = if (length $ nodes) < 10 && (not $ p)
+                                            then parallelize (principal_variation_search_par) node d'
+                                            else case nodes of
+                                                    nn' -> (node:pvm, -pvv)
+                                                        where (pvm, pvv) = pvs alpha'' beta'' nn' d' p
+                            in result
+pvs _ _ _ _ _ = throw Pattern_match_ex
 {-# contract alpha_beta :: Ok -> Ok -> Ok -> {depth | depth >= 0} -> {(rs, rv) | not null rs} #-}
 -- | Normal alpha beta pruning (no window).
-alpha_beta :: Game_tree a => Int -- ^ Minimum score maximising player is assured
+alpha_beta :: (S.NFData a, Game_tree a) => Int -- ^ Minimum score maximising player is assured
            -> Int          -- ^ Maximum score minimizing player is assured
            -> a            -- ^ State to be evaluated
            -> Int          -- ^ Search this deep
+           -> Bool         -- ^ Parallelize this stage
            -> ([a], Int)   -- ^ (Principal variation, Score)
-alpha_beta alpha beta node depth
+alpha_beta alpha beta node depth p
     | is_terminal node || depth == 0 = ([node], node_value node)
     | otherwise                      =  let
-                                            result = case children node of
-                                                cc@(c:cs) -> (node:pvm, pvv)
-                                                    where (pvm, pvv) = negaLevel ([], (minBound :: Int) + 2) alpha beta (cc)
-                                                _      -> throw Pattern_match_ex
+                                            nodes  = children node
+                                            search = (alpha_beta ((minBound :: Int) + 1) (maxBound :: Int))
+                                            result = if (length $ nodes) < 10 && (not $ p)
+                                                        then parallelize (search) node depth
+                                                        else (node:pvm, pvv)
+                                                            where (pvm, pvv) = negaLevel ([], (minBound :: Int) + 2) alpha beta nodes
                                         in result
-    where negaLevel prev_best@(_, old_v) prev_alpha beta' (n:nn) | old_v < beta'
-            = negaLevel best4 alpha' beta' nn
-                where best4 = case neg $ alpha_beta (-beta') (-alpha') n (depth - 1) of 
+    where negaLevel prev_best@(_, old_v) prev_alpha beta' (n:nn)
+            | old_v < beta' = negaLevel best4 alpha' beta' nn
+                where best4 = case neg $ alpha_beta (-beta') (-alpha') n (depth - 1) p of 
                                  value@(_, v) | (v > old_v) -> value
                                               | otherwise -> prev_best
                       alpha' = if old_v > prev_alpha then old_v else prev_alpha
@@ -170,20 +184,20 @@ alpha_beta alpha beta node depth
         
 
 parallelize ::(S.NFData a, Game_tree a) => 
-              (a -> Int -> ([a], Int))  -- ^ search function to parallelize
+              (a -> Int -> Bool -> ([a], Int))  -- ^ search function to parallelize
            -> a                         -- ^ State to be evaluated
            -> Int                       -- ^ Search this deep
-           -> [([a], Int)]              -- ^ (Principal variation, Score) ordered by move value
+           -> ([a], Int)                -- ^ (Principal variation, Score) ordered by move value
 parallelize f node depth =
     let
         nodes = children node
-        res   = S.parMap S.rdeepseq (\n -> (f n (depth-1))) $ nodes
+        res   = S.parMap S.rdeepseq (\n -> (f n (depth-1)) True) $ nodes
         first = ([node],minBound)
-        --best  = inject node $! (foldl' (getBest) first res)
-        set   = sortBy (comp) $ map (\n -> inject node $ invert n) res
+        best  = inject node $! (foldl' (getBest) first res)
+        --set   = sortBy (comp) $ map (\n -> inject node $ invert n) res
     in if is_terminal node
-          then [first]
-          else set --best
+          then first
+          else best
     where
         getBest :: Game_tree a => ([a], Int) -> ([a], Int) -> ([a], Int)
         getBest (bestn, bestv) (n, v) = 
@@ -198,4 +212,3 @@ parallelize f node depth =
         
         comp :: ([a], Int) -> ([a], Int) -> Ordering
         comp (_,a) (_,b) = compare a b
-

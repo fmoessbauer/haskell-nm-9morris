@@ -12,12 +12,10 @@ import Data.Maybe
 import Data.List
 import Data.Map (Map)
 import qualified Data.Map as Map
-import Data.STRef
-import Control.Monad.ST
-import Debug.Trace
+--import Debug.Trace
 --import Numeric
 import qualified NineMorris.Globals as G
-import Control.Exception hiding (mask)
+import Control.Exception hiding (mask,blocked)
 import qualified Control.Parallel.Strategies as S
 import Data.Tree.Game_tree.Game_tree
 import Data.Tree.Game_tree.Negascout_par
@@ -61,7 +59,7 @@ instance Ord Move where
 
 instance S.NFData  Node
 instance Game_tree Node where
-    is_terminal (Node board move) = 
+    is_terminal (Node board _) = 
         let
             player    = getBoardNextPlayer board
             handcount = getBoardHandCount player board
@@ -70,17 +68,17 @@ instance Game_tree Node where
             pc        = pieces + handcount
         in pc < 3 || pc == blocked
     
-    node_value (Node board move) =
+    node_value (Node board _) =
         let
             player = getBoardNextPlayer board
             sig    = 1
         in sig * (round $ snd $ evalBoard player board)
         
-    children (Node board move) =
+    children (Node board _) =
         let
             moves = legalMoves board
             res = map (\move -> Node (playMove move board) (Just move)) moves
-        in if res == [] then trace ("FEHLER: "++ (show $ board)) [] else res
+        in res
 
 
 opponent :: Player -> Player
@@ -481,13 +479,15 @@ aiMove' depth bias board =
 aiMove :: Int -> Map Board Float -> Board -> Maybe Move
 aiMove depth bias board =
     let
-        (list,value) = head $ parallelize (principal_variation_search) (Node board Nothing) (depth)
+        (list,value) = principal_variation_search (Node board Nothing) (depth)
         (Node b m) = head $! drop 1 $! list
     in m `S.using` S.rseq
     
+{-
 aiMoveIterative :: Game_tree a => Int -> Map Board Float -> Board -> [a] -> (Maybe Move, [a])
-aiMoveIterative depth bias moves board =
+aiMoveIterative depth bias board history =
     let
         (list,value) = head $ parallelize (principal_variation_search) (Node board Nothing) (depth)
         (Node b m) = head $! drop 1 $! list
-    in m `S.using` S.rseq
+    in (m,[]) `S.using` S.rseq
+-}
