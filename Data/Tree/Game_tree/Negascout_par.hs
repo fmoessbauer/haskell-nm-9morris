@@ -148,7 +148,7 @@ pvs alpha beta (c:cs) depth p = case negpvs (-beta) (-alpha) c d of
               | is_terminal node || d' == 0 = ([node], - (node_value node))
               | otherwise = let
                                 nodes  = children node
-                                result = if (length $ nodes) < 10 && (not $ p)
+                                result = if (length $ nodes) < 10 && d' > 1 && (not $ p)
                                             then parallelize (principal_variation_search_par) node d'
                                             else case nodes of
                                                     nn' -> (node:pvm, -pvv)

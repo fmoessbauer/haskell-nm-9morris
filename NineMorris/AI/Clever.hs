@@ -12,7 +12,7 @@ import Data.Maybe
 import Data.List
 import Data.Map (Map)
 import qualified Data.Map as Map
---import Debug.Trace
+import Debug.Trace
 --import Numeric
 import qualified NineMorris.Globals as G
 import Control.Exception hiding (mask,blocked)
@@ -59,20 +59,20 @@ instance Ord Move where
 
 instance S.NFData  Node
 instance Game_tree Node where
-    is_terminal (Node board _) = 
-        let
-            player    = getBoardNextPlayer board
-            handcount = getBoardHandCount player board
-            pieces    = fromIntegral $ getNumPlayerPieces player board
-            blocked   = fromIntegral $ blockedPiecesCnt player board
-            pc        = pieces + handcount
-        in pc < 3 || pc == blocked
+    is_terminal node@(Node board _) = loss $ getBoardNextPlayer board
+        where
+            loss player = 
+                let 
+                    handcount = getBoardHandCount player board
+                    pieces    = fromIntegral $ getNumPlayerPieces player board
+                    blocked   = fromIntegral $ blockedPiecesCnt player board
+                    pc        = pieces + handcount
+                in pc < 3 || pc == blocked
     
     node_value (Node board _) =
         let
             player = getBoardNextPlayer board
-            sig    = 1
-        in sig * (round $ snd $ evalBoard player board)
+        in round $ snd $ evalBoard player board
         
     children (Node board _) =
         let
@@ -433,14 +433,18 @@ evalBoard player board =
         thrb = fromIntegral $ getNumPieceConf tPCB                     -- (6) three piece combinations
         dbmb = fromIntegral $ getNumPieceConf mb                       -- (7) double morris
 
-        millClosed = if isMillClosed board then 1 else 0               -- (1) Mill closed in last move
+        sig  = case player of
+                Black -> 1
+                Red   -> -1
+        millClosed = sig * if isMillClosed board then 1 else 0               -- (1) Mill closed in last move
+        
+        winConfa   = if pb < 3 || pb == bb then 1 else 0
+        winConfb   = if pa < 3 || pa == ba then 1 else 0
 
     in case () of
-           _ | pb < 3 || pb == bb -> (Just Red, winValue)
-             | pa < 3 || pa == ba -> (Just Black, -winValue)
-             | ha > 0    -> (Nothing, 18 * millClosed + 26 * (mca-mcb) + 1  * (bb-ba) + 6  * (pa-pb) + 12 * (twoa-twob) + 7 * (thra-thrb) + 1 * (fa-fb))
-             | pa == 3   -> (Nothing, 40 * millClosed + 10 * (twoa-twob) + 1 * (thra-thrb))
-             | otherwise -> (Nothing, 14 * millClosed + 43 * (mca-mcb) + 10 * (bb-ba) + 8 * (pa-pb) + 7 * (twoa-twob) + 42 * (dbma-dbmb))
+           _ | ha > 0    -> (Nothing, 18 * millClosed + 26 * (mca-mcb) + 1  * (bb-ba) + 9  * (pa-pb) + 10 * (twoa-twob) + 7 * (thra-thrb))
+             | pa == 3   -> (Nothing, 16 * millClosed + 10 * (twoa-twob) + 1 * (thra-thrb) + 1190 * (winConfb-winConfa))
+             | otherwise -> (Nothing, 14 * millClosed + 43 * (mca-mcb) + 10 * (bb-ba) + 11 * (pa-pb) + 8 * (dbma-dbmb) + 1186 * (winConfb-winConfa))
              -- | otherwise -> (Nothing, 1.0*(pa-pb)+0.2*(fa-fb)+0.8*(ma-mb)) 
              -- heuristic based on https://kartikkukreja.wordpress.com/2014/03/17/heuristicevaluation-function-for-nine-mens-morris/
              -- Evaluation function for Phase 1 = 18 * (1) + 26 * (2) + 1 * (3) + 9 * (4) + 10 * (5) + 7 * (6)
@@ -480,8 +484,8 @@ aiMove :: Int -> Map Board Float -> Board -> Maybe Move
 aiMove depth bias board =
     let
         (list,value) = principal_variation_search (Node board Nothing) (depth)
-        (Node b m) = head $! drop 1 $! list
-    in m `S.using` S.rseq
+        n@(Node b m) = head $! drop 1 $! list
+    in m  `S.using` S.rseq
     
 {-
 aiMoveIterative :: Game_tree a => Int -> Map Board Float -> Board -> [a] -> (Maybe Move, [a])
