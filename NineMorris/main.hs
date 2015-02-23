@@ -1,6 +1,15 @@
-{-
-Main file of the Haskell-NM-9Morris Project
--}
+-----------------------------------------------------------------------------
+-- 
+-- Module      :  NineMorris
+-- Copyright   :  (c) Felix Moessbauer
+-- 
+-- Maintainer  :  felix.moessbauer@campus.lmu.de
+-- Stability   :  provisional
+-- Portability :  portable
+--
+-- Main file of the Haskell-NM-9Morris Project
+-----------------------------------------------------------------------------
+
 import NineMorris.Client
 import qualified NineMorris.Globals as G
 import Paths_haskell_nm_9morris (version)

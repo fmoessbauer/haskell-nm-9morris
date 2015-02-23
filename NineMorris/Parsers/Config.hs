@@ -1,5 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
-{- Standalone parser implementation -}
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  NineMorris.Parsers.Config
+-- Copyright   :  (c) Felix Moessbauer
+-- 
+-- Maintainer  :  felix.moessbauer@campus.lmu.de
+-- Stability   :  provisional
+-- Portability :  portable
+--
+-- This module parses a config file to a config record
+-----------------------------------------------------------------------------
 module NineMorris.Parsers.Config (getConfig) where
 
 import qualified NineMorris.Globals as G
@@ -49,7 +59,9 @@ createConfig (Right store) = G.Config {
                              Nothing  -> throw $ G.ConfigNotValid (key `append` " missing")
 createConfig (Left _) = throw $ G.ConfigNotValid "parse error"
 
-getConfig :: String -> G.Config
+-- | parses a config file to a config record
+getConfig :: String     -- ^ file path
+          -> G.Config
 getConfig content = createConfig $ parseOnly lineParser (pack $ content)
 
 --main :: IO ()

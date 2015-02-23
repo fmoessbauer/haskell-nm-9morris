@@ -1,7 +1,39 @@
 {-# LANGUAGE DeriveGeneric #-}
-{- fast implementation of a morris AI -}
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  NineMorris.AI.Clever
+-- Copyright   :  (c) Felix Moessbauer
+-- 
+-- Maintainer  :  felix.moessbauer@campus.lmu.de
+-- Stability   :  provisional
+-- Portability :  portable
+--
+-- This module provides a (relatively) fast nine men morris AI. It can use
+-- parallelization and should be conform with most of the rules defined
+-- by the WMD (Weltmühlespiel Dachverband). The following rules are currently
+-- not implemented:
+--
+-- closing two mills simultaneously allows catching two pieces,
+-- no-capture moves if such move would lead to a instant win
+-----------------------------------------------------------------------------
 
-module NineMorris.AI.Clever where
+module NineMorris.AI.Clever (
+    -- constructors
+    Action(..),
+    FirstAction(..),
+    SecondAction(..),
+    Move(..),
+    Position(..),
+    Board(..),
+    Player(..),
+    -- functions
+    newBoard,
+    setBoardNextPlayer,
+    setBoardPosition,
+    reduceBoardHandCount,
+    aiMove
+    )
+where
 
 import Control.DeepSeq()
 import GHC.Generics
@@ -12,7 +44,7 @@ import Data.Maybe
 import Data.List
 import Data.Map (Map)
 import qualified Data.Map as Map
-import Debug.Trace
+--import Debug.Trace
 --import Numeric
 import qualified NineMorris.Globals as G
 import Control.Exception hiding (mask,blocked)
@@ -28,12 +60,12 @@ newtype Position = Position Int deriving (Eq, Ord, Show, Generic)
 instance S.NFData Position
 
 data FirstAction
-    = Place Position
-    | Move Position Position
+    = Place Position            -- ^ place a piece from the hand on the board
+    | Move Position Position    -- ^ move the pieces from one pos to another (adjacent) pos
     deriving (Eq, Show)
 
 newtype SecondAction
-    = Take Position
+    = Take Position             -- ^ capture the pieces on this position
     deriving (Eq, Show)
 
 data Action
@@ -41,25 +73,27 @@ data Action
     | SecondAction SecondAction
     deriving (Eq, Show)
 
+-- | game move consists of two actions
 data Move = FullMove {
     fstAction :: FirstAction,
     sndAction :: Maybe SecondAction}
     deriving (Eq, Show)
 
--- I am Black
+-- | which players are possible. I am Black
 data Player = Red | Black deriving (Eq, Ord, Show)
 
+-- | node of the game tree consists of a board and a move that lead to the board
 data Node = Node Board (Maybe Move) deriving (Eq, Ord, Show, Generic)
 
 -- prefere take moves
 instance Ord Move where
     compare FullMove{sndAction=a} FullMove{sndAction=b} 
         | (isNothing a) && (isJust b) = LT
-        | otherwise                 = EQ
+        | otherwise                   = EQ
 
 instance S.NFData  Node
 instance Game_tree Node where
-    is_terminal node@(Node board _) = loss $ getBoardNextPlayer board
+    is_terminal (Node board _) = (loss $ Red) || (loss $ Black)
         where
             loss player = 
                 let 
@@ -85,7 +119,11 @@ opponent :: Player -> Player
 opponent Red = Black
 opponent Black = Red
 
-setBoardPosition :: Maybe Player -> Position -> Board -> Board
+-- set the specified board position
+setBoardPosition :: Maybe Player -- ^ Player of this position or Nothing if pos is free
+                 -> Position     -- ^ Position
+                 -> Board        -- ^ Board to set
+                 -> Board
 setBoardPosition posVal (Position posN) (Board rawBoard) =
     let encode Nothing      = 0
         encode (Just Red)   = 1
@@ -134,7 +172,10 @@ getBoardHandCount player (Board rawBoard) =
     let idx = handCountBitIdx player
     in fromIntegral $ (.&.) 0xF $ shiftR rawBoard idx
 
-setBoardNextPlayer :: Player -> Board -> Board
+-- | set the next player to given player
+setBoardNextPlayer :: Player    -- ^ player to set
+                   -> Board     -- ^ board to set player
+                   -> Board
 setBoardNextPlayer player (Board rawBoard) =
     let adjBit Red = flip clearBit 63
         adjBit Black = flip setBit 63
@@ -149,12 +190,14 @@ getBoardNextPlayer (Board rawBoard) =
         toPlayer True = Black    
     in toPlayer $ testBit rawBoard 63
 
+-- | reduce the handcount of given player and board
 reduceBoardHandCount :: Player -> Board -> Board
 reduceBoardHandCount pl board = 
     let 
         bc = getBoardHandCount pl board
     in setBoardHandCount (bc-1) pl board
 
+-- | get new empty board
 newBoard :: Board
 newBoard =
     setBoardHandCount 9 Red $ setBoardHandCount 9 Black $ Board 0
@@ -412,7 +455,7 @@ evalBoard player board =
         ma   = getPlayerMills player board
 
         pa   = ha  + (fromIntegral $ getNumPlayerPieces player board)  -- (4) number pieces
-        fa   = fromIntegral $ length $ adjMoves player board           -- free adjacent positions
+        --fa   = fromIntegral $ length $ adjMoves player board           -- free adjacent positions
         ba   = fromIntegral $ blockedPiecesCnt player board            -- (3) blocked A pieces
         mca  = fromIntegral $ length ma                                -- (2) mills count
         twoa = fromIntegral $ length tPCA                              -- (5) two piece combinations
@@ -426,7 +469,7 @@ evalBoard player board =
         mb   = getPlayerMills oPlayer board
         
         pb   = hb + (fromIntegral $ getNumPlayerPieces oPlayer board)  -- (4) number pieces
-        fb   = fromIntegral $ length $ adjMoves oPlayer board          -- free adjacent positions
+        --fb   = fromIntegral $ length $ adjMoves oPlayer board          -- free adjacent positions
         bb   = fromIntegral $ blockedPiecesCnt oPlayer board           -- (3) blocked B pieces
         mcb  = fromIntegral $ length mb                                -- (2) mills count
         twob = fromIntegral $ length tPCB                              -- (5) two piece combinations
@@ -445,7 +488,6 @@ evalBoard player board =
            _ | ha > 0    -> (Nothing, 18 * millClosed + 26 * (mca-mcb) + 1  * (bb-ba) + 9  * (pa-pb) + 10 * (twoa-twob) + 7 * (thra-thrb))
              | pa == 3   -> (Nothing, 16 * millClosed + 10 * (twoa-twob) + 1 * (thra-thrb) + 1190 * (winConfb-winConfa))
              | otherwise -> (Nothing, 14 * millClosed + 43 * (mca-mcb) + 10 * (bb-ba) + 11 * (pa-pb) + 8 * (dbma-dbmb) + 1186 * (winConfb-winConfa))
-             -- | otherwise -> (Nothing, 1.0*(pa-pb)+0.2*(fa-fb)+0.8*(ma-mb)) 
              -- heuristic based on https://kartikkukreja.wordpress.com/2014/03/17/heuristicevaluation-function-for-nine-mens-morris/
              -- Evaluation function for Phase 1 = 18 * (1) + 26 * (2) + 1 * (3) + 9 * (4) + 10 * (5) + 7 * (6)
              -- Evaluation function for Phase 2 = 14 * (1) + 43 * (2) + 10 * (3) + 11 * (4) + 8 * (7) + 1086 * (8)
@@ -480,11 +522,15 @@ aiMove' depth bias board =
         in move `S.using` S.rseq
         
         
-aiMove :: Int -> Map Board Float -> Board -> Maybe Move
-aiMove depth bias board =
+-- | calculate the best legal move
+aiMove :: Int               -- ^ search depth
+       -> Map Board Float   -- ^ Map.empty, only to provide the same interface
+       -> Board             -- ^ board for which the move will be calculated
+       -> Maybe Move
+aiMove depth _ board =
     let
-        (list,value) = principal_variation_search (Node board Nothing) (depth)
-        n@(Node b m) = head $! drop 1 $! list
+        (list,_) = principal_variation_search (Node board Nothing) (depth)
+        (Node _ m) = head $! drop 1 $! list
     in m  `S.using` S.rseq
     
 {-

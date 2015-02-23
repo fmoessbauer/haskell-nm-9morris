@@ -59,3 +59,5 @@ executable haskell-nm-9morris
   }
   if flag(functionalai)
     cpp-options: -DFUNCTIONALAI
+  if flag(debug)
+    cpp-options: -DDEBUG

@@ -1,5 +1,16 @@
 {-# LANGUAGE OverloadedStrings #-}
-{- Standalone parser implementation -}
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  NineMorris.Parsers.Protocol
+-- Copyright   :  (c) Felix Moessbauer
+-- 
+-- Maintainer  :  felix.moessbauer@campus.lmu.de
+-- Stability   :  provisional
+-- Portability :  portable
+--
+-- This module provides functions to parse strings from the server
+-- to different types
+-----------------------------------------------------------------------------
 module NineMorris.Parsers.Protocol (
   parseWelcome,
   parseGamekind,

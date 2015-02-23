@@ -31,7 +31,7 @@ import qualified Control.Parallel.Strategies as S
 import Control.Exception
 import Data.Typeable
 import Data.List
-import Debug.Trace
+-- import Debug.Trace
 
 data AlgorithmicException = Pattern_match_ex
     deriving (Show, Typeable)
@@ -183,11 +183,12 @@ alpha_beta alpha beta node depth p
           neg (m, v) = (m, -v)
         
 
+-- | parallelize a search algorithm by parallel evaluation of branches.
 parallelize ::(S.NFData a, Game_tree a) => 
               (a -> Int -> Bool -> ([a], Int))  -- ^ search function to parallelize
-           -> a                         -- ^ State to be evaluated
-           -> Int                       -- ^ Search this deep
-           -> ([a], Int)                -- ^ (Principal variation, Score) ordered by move value
+           -> a                                 -- ^ State to be evaluated
+           -> Int                               -- ^ Search this deep
+           -> ([a], Int)                        -- ^ (Principal variation, Score) ordered by move value
 parallelize f node depth =
     let
         nodes = children node
@@ -207,8 +208,5 @@ parallelize f node depth =
         inject :: Game_tree a => a -> ([a], Int) -> ([a], Int)
         inject a (n,v) = (a:n,v)
         
-        invert :: Game_tree a => ([a], Int) -> ([a], Int)
-        invert (n,v) = (n,-v) 
-        
-        comp :: ([a], Int) -> ([a], Int) -> Ordering
-        comp (_,a) (_,b) = compare a b
+        -- comp :: ([a], Int) -> ([a], Int) -> Ordering
+        -- comp (_,a) (_,b) = compare a b

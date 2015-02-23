@@ -1,6 +1,18 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE NamedFieldPuns    #-}
 {-# LANGUAGE CPP               #-}
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  NineMorris.Connector
+-- Copyright   :  (c) Felix Moessbauer
+-- 
+-- Maintainer  :  felix.moessbauer@campus.lmu.de
+-- Stability   :  provisional
+-- Portability :  portable
+--
+-- This module handles the connection to the server,
+-- performes the protocol and drives the AI Interface
+-----------------------------------------------------------------------------
 module NineMorris.Connector (performConnection) where
 
 import qualified NineMorris.Globals as G
@@ -24,7 +36,11 @@ import NineMorris.AI.SimpleInterface
 import NineMorris.AI.CleverInterface
 #endif
 
-performConnection :: G.Gameid -> Config -> Maybe Int -> IO ()
+-- | establish the connection to the game server
+performConnection :: G.Gameid   -- ^ gameid of choosen game
+                  -> Config     -- ^ config record with server information
+                  -> Maybe Int  -- ^ prefered player id or Nothing
+                  -> IO ()
 performConnection gid cnf@Config{hostname, port, gamekind} player = do
     -- debug
     putStrLn $ "gameid: "++gid++" "++ (show $ cnf)
@@ -51,12 +67,18 @@ performConnection gid cnf@Config{hostname, port, gamekind} player = do
     -- close Handle and Socket
     hClose hdl
 
-handleProtocol :: G.Gameid -> Text -> Maybe Int -> Handle -> IO ()
+-- | handle the protocol
+handleProtocol :: G.Gameid      -- ^ gameid of choosen game
+               -> Text          -- ^ gamekind of the AI.
+               -> Maybe Int     -- ^ prefered player id or Nothing
+               -> Handle        -- ^ socket handle
+               -> IO ()
 handleProtocol gid gkind wishPlayer hdl = do
     player <- handleProlog gid gkind wishPlayer hdl
     handleGamePhase hdl player
     return ()
 
+-- | handle the prolog protocol phase
 handleProlog :: G.Gameid -> Text -> Maybe Int -> Handle -> IO G.PlayerInfo
 handleProlog gid gkind wishPlayer hdl = do
     line <- getDebugLine hdl
@@ -97,8 +119,9 @@ handleProlog gid gkind wishPlayer hdl = do
     putStrLn $ show $ mePlayer
     return $ mePlayer
 
+-- | loop to handle the game phase.
 handleGamePhase :: Handle -> G.PlayerInfo -> IO ()
-handleGamePhase hdl player = fix $ \loop -> do
+handleGamePhase hdl player = fix $ \loop -> do  -- prevents memory leaks
     line <- getDebugLine hdl
     ret <- case parseGPSwitch $ line of
         G.GP_WAIT          -> putDebugStrLn hdl "OKWAIT" >> return True
@@ -165,9 +188,12 @@ gameOver hdl player winner = do
     hClose hdl
     return False
 
+-- | Does nothing. Implemented to catch only the timeout exception
 timeoutHandler :: G.MorrisException -> IO ()
-timeoutHandler _ = return() --putStrLn "Caught Timeout Exception"
+timeoutHandler G.TimeOutAI = return()               --putStrLn "Caught Timeout Exception"
+timeoutHandler _           = throw G.AiException    -- should never be reached
 
+-- | retrieve the stones from server
 getPieceInfo :: Handle -> IO [G.StoneInfo]
 getPieceInfo hdl = do
     getDebugLine hdl >>= (\str -> return $ parseMoveCapture str) --no capture needed
@@ -176,7 +202,6 @@ getPieceInfo hdl = do
     getDebugLine hdl >>= parseStatic "+ ENDPIECELIST"
 
     putStrLn $ show $ pieces
-    
     return pieces
 
 parseClientVersOk :: Text -> IO ()
@@ -196,14 +221,16 @@ parseEndplayers str = if str == "+ ENDPLAYERS" -- todo switch to parseStatic
     then return ()
     else throw $ G.ProtocolError ("ENDPLAYERS expected, but: " `append` str)
 
+-- | read line from socket and if in debug mode, print this line
 getDebugLine :: Handle -> IO Text
 getDebugLine hdl = do
     line <- TextIO.hGetLine hdl
-    putStrLn $ "DEBUG: "++(show $ line)
+    when G.isDebug $ putStrLn $ "DEBUG: "++(show $ line)
     return line
 
+-- | write line to socket and if in debug mode, print this line
 putDebugStrLn :: Handle -> Text -> IO ()
 putDebugStrLn hdl str = do
     TextIO.hPutStrLn hdl str
-    putStrLn $ "DEBUG: "++(unpack $ str)
+    when G.isDebug $ putStrLn $ "DEBUG: "++(unpack $ str)
     return ()

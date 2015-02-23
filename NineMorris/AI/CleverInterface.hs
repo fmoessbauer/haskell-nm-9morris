@@ -1,4 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  NineMorris.AI.CleverInterface
+-- Copyright   :  (c) Felix Moessbauer
+-- 
+-- Maintainer  :  felix.moessbauer@campus.lmu.de
+-- Stability   :  provisional
+-- Portability :  portable
+--
+-- This module provides a unified interface to the clever AI
+-----------------------------------------------------------------------------
 module NineMorris.AI.CleverInterface (
     convertMove,
     convertBoard,
@@ -14,6 +25,7 @@ import Data.Maybe (isJust,fromMaybe)
 import Control.Concurrent.MVar
 import Control.Monad (when)
 
+-- | convert a AI fullmove to the format the server expects
 convertMove :: Maybe AI.Move -> Text
 convertMove Nothing = throw G.AiException
 convertMove (Just AI.FullMove { AI.fstAction=fsta, AI.sndAction=snda}) = 
@@ -37,7 +49,7 @@ convertToInternalPos pos =  AI.Position (Map.findWithDefault (-1) pos G.toAiPosi
 convertToServerPos :: AI.Position -> Text
 convertToServerPos (AI.Position pos) = Map.findWithDefault "" pos G.toServerPositions
 
-
+-- | convert the stone data recieved from server to AI board
 convertBoard :: G.PlayerInfo -> [G.StoneInfo] -> AI.Board
 convertBoard player stones = AI.setBoardNextPlayer AI.Black $ foldl (convertSingleStone $ player) (AI.newBoard) stones
 
@@ -51,7 +63,11 @@ convertSingleStone (G.PlayerInfo {G.pid=pid}) (board) (G.StoneInfo {G.spid=playe
     | playerId == pid  = (AI.reduceBoardHandCount AI.Black) $ (AI.setBoardPosition (Just AI.Black) (convertToInternalPos pos) board)
     | otherwise        = (AI.reduceBoardHandCount AI.Red) $ (AI.setBoardPosition (Just AI.Red)   (convertToInternalPos pos) board)
 
-calculateIterativeMove :: (MVar (Maybe AI.Move), MVar (Maybe AI.Move, Int)) -> AI.Board -> Int -> IO ()
+-- | Calculate a legal move with iterative deepening
+calculateIterativeMove :: (MVar (Maybe AI.Move), MVar (Maybe AI.Move, Int)) -- ^ first Mvar hold the current best move, second the current calculation
+                       -> AI.Board  -- ^ current board
+                       -> Int       -- ^ current depth. Increased with each iteration
+                       -> IO ()
 calculateIterativeMove (moveStore,moveSave) board depth = do
     --putStrLn "calculateIterativeMove"
     m <- tryTakeMVar moveStore
