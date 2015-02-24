@@ -13,7 +13,6 @@
 -- by the WMD (Weltmühlespiel Dachverband). The following rules are currently
 -- not implemented:
 --
--- closing two mills simultaneously allows catching two pieces,
 -- no-capture moves if such move would lead to a instant win
 -----------------------------------------------------------------------------
 
@@ -36,6 +35,7 @@ module NineMorris.AI.Clever (
 where
 
 import Control.DeepSeq()
+import Control.Applicative ((<$>), (<*>)) -- only for permute2
 import GHC.Generics
 import Data.Word
 import Data.Word.Odd
@@ -47,7 +47,7 @@ import qualified Data.Map as Map
 --import Debug.Trace
 --import Numeric
 import qualified NineMorris.Globals as G
-import Control.Exception hiding (mask,blocked)
+import Control.Exception (throw)
 import qualified Control.Parallel.Strategies as S
 import Data.Tree.Game_tree.Game_tree
 import Data.Tree.Game_tree.Negascout_par
@@ -65,7 +65,7 @@ data FirstAction
     deriving (Eq, Show)
 
 newtype SecondAction
-    = Take Position             -- ^ capture the pieces on this position
+    = Take [Position]           -- ^ capture the pieces on this position
     deriving (Eq, Show)
 
 data Action
@@ -93,7 +93,7 @@ instance Ord Move where
 
 instance S.NFData  Node
 instance Game_tree Node where
-    is_terminal (Node board _) = (loss $ Red) || (loss $ Black)
+    is_terminal (Node board _) = loss $ getBoardNextPlayer board -- (loss $ Red) || (loss $ Black)
         where
             loss player = 
                 let 
@@ -366,8 +366,8 @@ playFirstAction player (Move p p') board =
     setBoardPosition Nothing p board
 
 playSecondAction :: SecondAction -> Board -> Board
-playSecondAction (Take pos) =
-    (setBoardPosition Nothing pos).setMillClosed
+playSecondAction (Take pos) board =
+    foldl' (\b p -> (setBoardPosition Nothing p).setMillClosed $ b) board $ pos
 
 playNext :: Board -> Board
 playNext board =
@@ -388,14 +388,24 @@ partialToFullMoves player board act1 =
     let board' = playFirstAction player act1 board
         mills = getPlayerMills player board
         mills' = getPlayerMills player board'
-        newMills = not $ null $ mills' \\ mills
+        newMills = mills' \\ mills
         oPlayer = opponent player
         oPieces = getPlayerPieces oPlayer board
         oVulnerable = oPieces \\ (concat $ getPlayerMills oPlayer board)
         oTakeable = if null oVulnerable then oPieces else oVulnerable
-        moves = (map (FullMove act1 . Just . Take) oTakeable) -- ++ [FullMove act1 Nothing] -- added No Take moves
-    in if newMills && (not $ null oTakeable)
-       then moves else [FullMove act1 Nothing]
+        moves = case () of
+                     _ | (length $ newMills) == 2 && (length $ oTakeable) >= 2 -> (map (\pieces -> FullMove act1 (Just $ Take pieces )) (permute2 oTakeable))
+                       | (length $ newMills) == 2 && (length $ oTakeable) == 1 -> (map (\pieces -> FullMove act1 (Just $ Take pieces )) (combine oTakeable (oPieces \\ oTakeable)))
+                       | (not $ null $ newMills)  && (not $ null $ oTakeable)  -> (map (\piece  -> FullMove act1 (Just $ Take [piece])) oTakeable)
+                       | otherwise -> [FullMove act1 Nothing]
+            
+    in moves
+    where
+        permute2 :: [a] -> [[a]]
+        permute2 list = combine list list
+        
+        combine :: [a] -> [a] -> [[a]]
+        combine l1 l2 = (\p p2 -> [p,p2]) <$> l1 <*> l2 -- crazy solution, but simple
 
 placeMoves' :: Board -> [FirstAction]
 placeMoves' board = map Place $ filter (\p ->
@@ -455,7 +465,7 @@ evalBoard player board =
         ma   = getPlayerMills player board
 
         pa   = ha  + (fromIntegral $ getNumPlayerPieces player board)  -- (4) number pieces
-        --fa   = fromIntegral $ length $ adjMoves player board           -- free adjacent positions
+        fa   = fromIntegral $ length $ adjMoves player board           -- free adjacent positions
         ba   = fromIntegral $ blockedPiecesCnt player board            -- (3) blocked A pieces
         mca  = fromIntegral $ length ma                                -- (2) mills count
         twoa = fromIntegral $ length tPCA                              -- (5) two piece combinations
@@ -469,7 +479,7 @@ evalBoard player board =
         mb   = getPlayerMills oPlayer board
         
         pb   = hb + (fromIntegral $ getNumPlayerPieces oPlayer board)  -- (4) number pieces
-        --fb   = fromIntegral $ length $ adjMoves oPlayer board          -- free adjacent positions
+        fb   = fromIntegral $ length $ adjMoves oPlayer board          -- free adjacent positions
         bb   = fromIntegral $ blockedPiecesCnt oPlayer board           -- (3) blocked B pieces
         mcb  = fromIntegral $ length mb                                -- (2) mills count
         twob = fromIntegral $ length tPCB                              -- (5) two piece combinations
@@ -485,9 +495,10 @@ evalBoard player board =
         winConfb   = if pa < 3 || pa == ba then 1 else 0
 
     in case () of
-           _ | ha > 0    -> (Nothing, 18 * millClosed + 26 * (mca-mcb) + 1  * (bb-ba) + 9  * (pa-pb) + 10 * (twoa-twob) + 7 * (thra-thrb))
+           _ | ha > 0    -> (Nothing, 18 * millClosed + 26 * (mca-mcb) + 10  * (fa-fb) + 100  * (pa-pb) + 10 * (twoa-twob) + 7 * (thra-thrb))
              | pa == 3   -> (Nothing, 16 * millClosed + 10 * (twoa-twob) + 1 * (thra-thrb) + 1190 * (winConfb-winConfa))
-             | otherwise -> (Nothing, 14 * millClosed + 43 * (mca-mcb) + 10 * (bb-ba) + 11 * (pa-pb) + 8 * (dbma-dbmb) + 1186 * (winConfb-winConfa))
+             | otherwise -> (Nothing, 14 * millClosed + 43 * (mca-mcb) + 10 * (bb-ba) + 11 * (pa-pb) + 8 * (dbma-dbmb) + 1086 * (winConfb-winConfa))
+             -- otherwise -> (Nothing, 14 * millClosed + 43 * (mca-mcb) + 20 * (twoa-twob) + 10 * (bb-ba) + 11 * (pa-pb) + 8 * (dbma-dbmb) + 1186 * (winConfb-winConfa))
              -- heuristic based on https://kartikkukreja.wordpress.com/2014/03/17/heuristicevaluation-function-for-nine-mens-morris/
              -- Evaluation function for Phase 1 = 18 * (1) + 26 * (2) + 1 * (3) + 9 * (4) + 10 * (5) + 7 * (6)
              -- Evaluation function for Phase 2 = 14 * (1) + 43 * (2) + 10 * (3) + 11 * (4) + 8 * (7) + 1086 * (8)

@@ -41,7 +41,7 @@ convertFirstAction (AI.Place pos)     = (convertToServerPos $ pos)
 convertFirstAction (AI.Move old new)  = (convertToServerPos $ old) `append` ":" `append` (convertToServerPos $ new)
 
 convertSecondAction :: AI.SecondAction -> Text
-convertSecondAction (AI.Take pos) = convertToServerPos pos
+convertSecondAction (AI.Take pos) = foldl (\res p -> res `append` ";" `append` convertToServerPos p) "" pos
 
 convertToInternalPos :: Text -> AI.Position
 convertToInternalPos pos =  AI.Position (Map.findWithDefault (-1) pos G.toAiPositions)
@@ -50,7 +50,9 @@ convertToServerPos :: AI.Position -> Text
 convertToServerPos (AI.Position pos) = Map.findWithDefault "" pos G.toServerPositions
 
 -- | convert the stone data recieved from server to AI board
-convertBoard :: G.PlayerInfo -> [G.StoneInfo] -> AI.Board
+convertBoard :: G.PlayerInfo    -- ^ PlayerInfo record of client player
+             -> [G.StoneInfo]   -- ^ Parsed stone info records
+             -> AI.Board        -- ^ result board
 convertBoard player stones = AI.setBoardNextPlayer AI.Black $ foldl (convertSingleStone $ player) (AI.newBoard) stones
 
 {- I am Black -}
@@ -61,7 +63,7 @@ convertSingleStone (G.PlayerInfo {G.pid=pid}) (board) (G.StoneInfo {G.spid=playe
                             then (AI.reduceBoardHandCount AI.Black) board
                             else (AI.reduceBoardHandCount AI.Red)   board
     | playerId == pid  = (AI.reduceBoardHandCount AI.Black) $ (AI.setBoardPosition (Just AI.Black) (convertToInternalPos pos) board)
-    | otherwise        = (AI.reduceBoardHandCount AI.Red) $ (AI.setBoardPosition (Just AI.Red)   (convertToInternalPos pos) board)
+    | otherwise        = (AI.reduceBoardHandCount AI.Red)   $ (AI.setBoardPosition (Just AI.Red)   (convertToInternalPos pos) board)
 
 -- | Calculate a legal move with iterative deepening
 calculateIterativeMove :: (MVar (Maybe AI.Move), MVar (Maybe AI.Move, Int)) -- ^ first Mvar hold the current best move, second the current calculation
