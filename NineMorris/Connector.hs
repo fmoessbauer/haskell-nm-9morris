@@ -26,7 +26,7 @@ import Control.Concurrent.Suspend (msDelay)
 import Control.Concurrent.MVar
 import Control.Monad
 import Control.Monad.Fix (fix)
-import Data.Text (Text,pack,unpack,append)
+import Data.Text (Text,pack,unpack,append,split)
 import qualified Data.Text.IO as TextIO
 import NineMorris.Parsers.Protocol
 
@@ -82,8 +82,11 @@ handleProtocol gid gkind wishPlayer hdl = do
 handleProlog :: G.Gameid -> Text -> Maybe Int -> Handle -> IO G.PlayerInfo
 handleProlog gid gkind wishPlayer hdl = do
     line <- getDebugLine hdl
-    let vers = parseWelcome line
-    -- Todo check version
+    let (major,minor) = parseWelcome line
+    
+    -- verify that client and server versions match (major number has to be equal)
+    when (not $ major ==  read (unpack $ head $ (split (=='.') G.internalVersion))) (
+        putStrLn $ "WARNING: Client version '" ++ (unpack $ G.internalVersion) ++ "' does not match server version '"++ (show $ major) ++"."++ (show $ minor) ++"'.")
 
     -- send Client version
     putDebugStrLn hdl $ "VERSION " `append` G.internalVersion
@@ -108,7 +111,9 @@ handleProlog gid gkind wishPlayer hdl = do
     mePlayer <- getDebugLine hdl >>= (\str -> return $ parseMePlayerInfo str)
 
     total <- getDebugLine hdl >>= (\str -> return $ parseTotalPlayer str)
-    -- todo: check positiv response
+    
+    when (not $ total == 2) (putStrLn $ "WARNING: This client is only made for a single opponent, not" ++ (show $ total-1))
+
     players <- replicateM (total-1) (getDebugLine hdl >>= (\str -> return $ parsePlayerInfo str))
     putStrLn $ show $ players
 
