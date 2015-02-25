@@ -165,15 +165,14 @@ movePhase hdl player time = do
       ) (msDelay $ fromIntegral (time - G.aiTimeoutBuffer))   
     --
 
-    -- manual play extension
+    -- manual play extension for debugging
     --move <- getLine
     --putDebugStrLn hdl $ pack $  "PLAY " ++ move
     
     getDebugLine hdl >>= parseStatic "+ OKTHINK"
-    -- Play useless
-    -- calculate move
-    --  BIG TODO
-    --
+    
+    -- Blocking until timer fires
+    
     getDebugLine hdl >>= parseStatic "+ MOVEOK"
     return True
 
@@ -191,7 +190,7 @@ gameOver hdl player winner = do
         Nothing             -> putStrLn $ "Gameover with draw"
 
     hClose hdl
-    return False
+    return False -- leave game loop
 
 -- | Does nothing. Implemented to catch only the timeout exception
 timeoutHandler :: G.MorrisException -> IO ()
