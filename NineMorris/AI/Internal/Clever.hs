@@ -313,14 +313,6 @@ getPlayerMills player board =
         listToPosList pos (False:xs) = listToPosList (pos+1) xs
         listToPosList _   []         = [[]]
         -}
-        
--- | test the board and the given mill mask.
---   count how many pieces are already in that potential mill
---   for performance reasons: to avoid double conversion board has to be converted to mask
-testMill :: Mask -- ^ board as mask
-         -> Mask -- ^ mill mask @see millMasks
-         -> Int  -- ^ pieces in that mill
-testMill rawBoard mask = popCount $ (.&.) rawBoard mask
 
 -- | get the number of player mills via very fast bit operations
 getNumPlayerMills :: Player -> Board -> Int
@@ -328,39 +320,6 @@ getNumPlayerMills player board =
     let
         playerBoard = bordToMask player board
     in  foldl' (\acc mask -> if ((testMill playerBoard mask) == 3) then (acc+1) else acc) 0 millMasks
-
--- | a mask that hides the handcount if anded with a board mask
---   all bits except the hand count bits are set to 1
-hideHandCount :: Mask
-hideHandCount =  complement $ foldr (\pos -> (flip $ setBit) pos) 0 [48..63]
-
--- | a mask that hides all opponent board bits
---   be carefull, this mask has to be shiftet to fit the correct player
---   see board layout in NineMorris.AI.Clever if not sure
-rawPlayerMask :: Mask
-rawPlayerMask = (.&.) hideHandCount $ foldr (\pos -> (flip $ setBit) pos) 0 [0,2..49]
-
-playerMask :: Player -> Mask
-playerMask pl =
-    case pl of
-        Red   -> rawPlayerMask
-        Black -> shiftL rawPlayerMask 1
-
-millMasks :: [Mask]
-millMasks =
-    let positions = rawMillPos
-    in map (\mill ->  foldr (\pos -> (flip $ setBit) (pos*2)) 0 mill) positions
-
-getCombinedBoardMask :: Board -> Mask
-getCombinedBoardMask board@(Board raw) = 
-    let
-        opMask  = bordToMask Black board
-    in (.|.) raw opMask
-
--- | converts a Board into a mask shiftet so that the even bits belong to the given player
-bordToMask :: Player -> Board -> Mask
-bordToMask Red   (Board rawBoard) = rawBoard
-bordToMask Black (Board rawBoard) = shiftR rawBoard 1
 
 {- prepared for better heuristic function
 threePiecePosMap :: Map Position [Position]
@@ -384,16 +343,19 @@ getPlayerPieces player (Board rawBoard) =
     in result `S.using` S.rdeepseq
 
 
+-- | get the number of given players pieces
 getNumPlayerPieces :: Player -> Board -> Int
 getNumPlayerPieces player (Board rawBoard) = popCount $ (.&.) rawBoard $ playerMask player
 
-
+-- | get a list with free positions
 getFreePositions :: Board -> [Position]
 getFreePositions board = 
     let
         combBoard = getCombinedBoardMask board
     in filter (\(Position p) -> not $ testBit combBoard (p*2)) allPositions
 
+-- | get a list with current two piece configurations of the given player.
+-- | A 2-piece configuration is one to which adding one more piece would close a morris
 getTwoPieceConf :: Player -> Board -> [[Position]]
 getTwoPieceConf player board =
     let
@@ -417,6 +379,9 @@ getTwoPieceConf player board =
                     possible = elem (Just pl) $ map (flip getBoardPosition board) $ adj  
                 in if possible then delete free curMill else []
 
+-- | get number of position lists, that share a common piece
+--   that can be two 2-piece configurations, leading to a
+--   3-piece conf, or two mills which are a double mill
 getNumPieceConf :: [[Position]] -> Int
 getNumPieceConf dat = 
     let
@@ -425,6 +390,7 @@ getNumPieceConf dat =
         newSize = length $ nub flat
     in orgSize - newSize
     
+-- | get number of players pieces which can not move
 blockedPiecesCnt :: Player -> Board -> Int
 blockedPiecesCnt player board = 
     length $ filter (null) $
@@ -433,13 +399,16 @@ blockedPiecesCnt player board =
         fromJust $ Map.lookup p adjacencyMap) $
     getPlayerPieces player board
     
+-- | list with place actions
 placeMoves' :: Board -> [FirstAction]
 placeMoves' board = map Place $ filter (\p ->
     isNothing $ getBoardPosition p board) allPositions
     
+-- | list with place actions implemented using bit operations
 placeMoves :: Board -> [FirstAction]
 placeMoves board = map Place $ getFreePositions board
 
+-- | get all possible move actions
 adjMoves :: Player -> Board -> [FirstAction]
 adjMoves player board = 
     concatMap (\p -> map (\p' -> Move p p') $
@@ -447,6 +416,7 @@ adjMoves player board =
         fromJust $ Map.lookup p adjacencyMap) $
     getPlayerPieces player board
 
+-- | get all possible jump actions
 jmpMoves' :: Player -> Board -> [FirstAction]
 jmpMoves' player board =
     concatMap (\p -> map (\p' -> Move p p') $
@@ -454,13 +424,75 @@ jmpMoves' player board =
         filter (\possible -> isNothing $ getBoardPosition possible board) allPositions) $
     getPlayerPieces player board
     
+-- | get all possible jump actions via a propaply faster implementation
+--   than 'jmpMoves''
 jmpMoves :: Player -> Board -> [FirstAction]
 jmpMoves player board =
     let
         myPos   = getPlayerPieces player board
     in concatMap (\p -> map (\p' -> Move p p') $ getFreePositions board) $ myPos
 
-playFirstAction :: Player -> FirstAction -> Board -> Board
+{--------------------------------------------------------------------
+  operations with bitmasks
+--------------------------------------------------------------------}
+
+-- | test the board and the given mill mask.
+--   count how many pieces are already in that potential mill
+--   for performance reasons: to avoid double conversion board has to be converted to mask
+testMill :: Mask -- ^ board as mask
+         -> Mask -- ^ mill mask @see millMasks
+         -> Int  -- ^ pieces in that mill
+testMill rawBoard mask = popCount $ (.&.) rawBoard mask
+
+-- | a mask that hides the handcount if anded with a board mask
+--   all bits except the hand count bits are set to 1
+hideHandCount :: Mask
+hideHandCount =  complement $ foldr (\pos -> (flip $ setBit) pos) 0 [48..63]
+
+-- | a mask that hides all opponent board bits
+--   be carefull, this mask has to be shiftet to fit the correct player
+--   see board layout in NineMorris.AI.Clever if not sure
+rawPlayerMask :: Mask
+rawPlayerMask = (.&.) hideHandCount $ foldr (\pos -> (flip $ setBit) pos) 0 [0,2..49]
+
+-- | returns a mask that hides the opponent players bits
+playerMask :: Player -> Mask
+playerMask pl =
+    case pl of
+        Red   -> rawPlayerMask
+        Black -> shiftL rawPlayerMask 1
+
+-- | each mill as a board mask with only the mill bits set
+millMasks :: [Mask]
+millMasks =
+    let positions = rawMillPos
+    in map (\mill ->  foldr (\pos -> (flip $ setBit) (pos*2)) 0 mill) positions
+
+-- | returns a mask where the bits of both players are set (or ed),
+--   but at the same positions.
+--   normally each second bit belongs to red respectively black.
+--   In this case every second bit just shows if that position is
+--   occupied
+getCombinedBoardMask :: Board -> Mask
+getCombinedBoardMask board@(Board raw) = 
+    let
+        opMask  = bordToMask Black board
+    in (.|.) raw opMask
+
+-- | converts a Board into a mask shiftet so that the even bits belong to the given player
+bordToMask :: Player -> Board -> Mask
+bordToMask Red   (Board rawBoard) = rawBoard
+bordToMask Black (Board rawBoard) = shiftR rawBoard 1
+
+{--------------------------------------------------------------------
+  board modification / move operations
+--------------------------------------------------------------------}
+
+-- | apply the first move action to the board
+playFirstAction :: Player       -- ^ player which turn will be applied
+                -> FirstAction  -- ^ action to be applied
+                -> Board        -- ^ old board
+                -> Board        -- ^ result board
 playFirstAction player (Place p) board =
     setBoardPosition (Just player) p $
     reduceBoardHandCount player board
@@ -468,15 +500,18 @@ playFirstAction player (Move p p') board =
     setBoardPosition (Just player) p' $
     setBoardPosition Nothing p board
 
+-- | apply the second move action to the board
 playSecondAction :: SecondAction -> Board -> Board
 playSecondAction (Take pos) board =
     foldl' (\b p -> (setBoardPosition Nothing p).setMillClosed $ b) board $ pos
 
+-- | set to opponent move
 playNext :: Board -> Board
 playNext board =
     setBoardNextPlayer (opponent $ getBoardNextPlayer board) $
     clearMillClosed board
 
+-- | apply a full move to the board
 playMove :: Move -> Board -> Board
 playMove move board =
     let player = getBoardNextPlayer board
@@ -486,6 +521,9 @@ playMove move board =
             playNext . playSecondAction act2 . playFirstAction player act1
     in pm move board
 
+-- | create full moves from partial moves.
+--   if a piece should be captured, generate all moves
+--   with possible capture positions
 partialToFullMoves :: Player -> Board -> FirstAction -> [Move]
 partialToFullMoves player board act1 =
     let board' = playFirstAction player act1 board
@@ -511,6 +549,7 @@ partialToFullMoves player board act1 =
         combine l1 l2 = (\p p2 -> [p,p2]) <$> l1 <*> l2 -- crazy solution, but simple
 
     
+-- | generate all possible legal moves
 legalMoves :: Board -> [Move]
 legalMoves board =
     let player  = getBoardNextPlayer board
@@ -523,7 +562,10 @@ legalMoves board =
                     else jmpMoves player board
     in sort $ concatMap (partialToFullMoves player board) moves
 
-evalBoard :: Player -> Board -> (Maybe Player, Float)
+-- | heuristic function that rates the given board
+evalBoard :: Player                 -- ^ player for that will be rated
+          -> Board                  -- ^ board to rate
+          -> (Maybe Player, Float)  -- ^ second value holds the value. The first is to be comatible with the functionalAi implementation
 evalBoard player board =
     let 
         ha   = fromIntegral (getBoardHandCount player board)
@@ -561,15 +603,17 @@ evalBoard player board =
         winConfb   = if pa < 3 || pa == ba then 1 else 0
 
     in case () of
-           _ | ha > 0    -> (Nothing, 18 * millClosed + 26 * (mca-mcb) + 10  * (fa-fb) + 100  * (pa-pb) + 10 * (twoa-twob) + 7 * (thra-thrb))
+           _ | ha > 0    -> (Nothing, 18 * millClosed + 26 * (mca-mcb) + 5  * (fa-fb) + 100  * (pa-pb) + 10 * (twoa-twob) + 7 * (thra-thrb))
              | pa == 3   -> (Nothing, 16 * millClosed + 10 * (twoa-twob) + 1 * (thra-thrb) + 1190 * (winConfb-winConfa))
-             | otherwise -> (Nothing, 14 * millClosed + 43 * (mca-mcb) + 10 * (bb-ba) + 11 * (pa-pb) + 8 * (dbma-dbmb) + 1086 * (winConfb-winConfa))
+             | otherwise -> (Nothing, 14 * millClosed + 43 * (mca-mcb) + 5 * (fa-fb) + 10 * (pa-pb) + 4 * (dbma-dbmb) + 1086 * (winConfb-winConfa))
              -- otherwise -> (Nothing, 14 * millClosed + 43 * (mca-mcb) + 20 * (twoa-twob) + 10 * (bb-ba) + 11 * (pa-pb) + 8 * (dbma-dbmb) + 1186 * (winConfb-winConfa))
              -- heuristic based on https://kartikkukreja.wordpress.com/2014/03/17/heuristicevaluation-function-for-nine-mens-morris/
              -- Evaluation function for Phase 1 = 18 * (1) + 26 * (2) + 1 * (3) + 9 * (4) + 10 * (5) + 7 * (6)
              -- Evaluation function for Phase 2 = 14 * (1) + 43 * (2) + 10 * (3) + 11 * (4) + 8 * (7) + 1086 * (8)
              -- Evaluation function for Phase 3 = 16 * (1) + 10 * (5) + 1 * (6) + 1190 * (8)
 
+-- | evaluate a game tree. Not used anymore, just to prove that
+--   the new game-tree algorithm calculates equal values
 evalTree :: Board -> Int -> Float -> Float -> Float
 evalTree board depth alpha beta =
     let player = getBoardNextPlayer board
