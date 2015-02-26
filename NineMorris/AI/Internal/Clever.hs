@@ -603,9 +603,9 @@ evalBoard player board =
         winConfb   = if pa < 3 || pa == ba then 1 else 0
 
     in case () of
-           _ | ha > 0    -> (Nothing, 18 * millClosed + 26 * (mca-mcb) + 5  * (fa-fb) + 100  * (pa-pb) + 10 * (twoa-twob) + 7 * (thra-thrb))
+           _ | ha > 0    -> (Nothing, 18 * millClosed + 26 * (mca-mcb) + 4  * (fa-fb) + 6 * (pa-pb) + 21 * (twoa-twob) + 7 * (thra-thrb))
              | pa == 3   -> (Nothing, 16 * millClosed + 10 * (twoa-twob) + 1 * (thra-thrb) + 1190 * (winConfb-winConfa))
-             | otherwise -> (Nothing, 14 * millClosed + 43 * (mca-mcb) + 5 * (fa-fb) + 10 * (pa-pb) + 4 * (dbma-dbmb) + 1086 * (winConfb-winConfa))
+             | otherwise -> (Nothing, 42 * millClosed + 28 * (mca-mcb) + 50 * (bb-ba) + 8 * (pa-pb) + 24 * (twoa-twob) + 19 * (dbma-dbmb) + 949 * (winConfb-winConfa))
              -- otherwise -> (Nothing, 14 * millClosed + 43 * (mca-mcb) + 20 * (twoa-twob) + 10 * (bb-ba) + 11 * (pa-pb) + 8 * (dbma-dbmb) + 1186 * (winConfb-winConfa))
              -- heuristic based on https://kartikkukreja.wordpress.com/2014/03/17/heuristicevaluation-function-for-nine-mens-morris/
              -- Evaluation function for Phase 1 = 18 * (1) + 26 * (2) + 1 * (3) + 9 * (4) + 10 * (5) + 7 * (6)

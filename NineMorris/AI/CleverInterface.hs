@@ -11,7 +11,9 @@
 -- This module provides a unified interface to the clever AI
 -----------------------------------------------------------------------------
 module NineMorris.AI.CleverInterface (
+    AI.Board(..),
     convertMove,
+    convertMoveList,
     convertBoard,
     calculateIterativeMove )
 where
@@ -42,6 +44,19 @@ convertFirstAction (AI.Move old new)  = (convertToServerPos $ old) `append` ":" 
 
 convertSecondAction :: AI.SecondAction -> Text
 convertSecondAction (AI.Take pos) = foldl (\res p -> res `append` ";" `append` convertToServerPos p) "" pos
+
+convertSecondActionList :: AI.SecondAction -> [Text]
+convertSecondActionList (AI.Take pos) = map convertToServerPos pos
+
+convertMoveList :: Maybe AI.Move -> [Text]
+convertMoveList Nothing = throw G.AiException
+convertMoveList (Just AI.FullMove { AI.fstAction=fsta, AI.sndAction=snda}) = 
+    let
+        partOne = convertFirstAction fsta
+    in case snda of
+            Nothing     -> [partOne]
+            (Just act)  -> partOne : (convertSecondActionList act)
+
 
 convertToInternalPos :: Text -> AI.Position
 convertToInternalPos pos =  AI.Position (Map.findWithDefault (-1) pos G.toAiPositions)
