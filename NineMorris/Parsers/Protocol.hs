@@ -15,6 +15,7 @@
 -- modules
 -----------------------------------------------------------------------------
 module NineMorris.Parsers.Protocol (
+  Version,
   parseWelcome,
   parseGamekind,
   parseGameName,

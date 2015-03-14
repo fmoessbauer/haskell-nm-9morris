@@ -21,6 +21,7 @@ module NineMorris.AI.Internal.Clever (
     Board(..),
     Player(..),
     Node(..),
+    Mask,
     -- constants
     handCountBitIdx,
     millClosedBitIdx,
