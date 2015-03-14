@@ -176,7 +176,7 @@ handCountBitIdx Black = 52
 
 -- | which bit holds the mill closed flag
 millClosedBitIdx :: Int
-millClosedBitIdx = 56 -- TODO: check this value
+millClosedBitIdx = 56
 
 -- | all board positions
 allPositions :: [Position]

@@ -70,6 +70,18 @@ randomBoards    = [Board 9237516223792547242,
                    Board 9266156233314795776,
                    Board 9261652908565331976]
 
+mcbSetRed       = setMillClosed $ setBoardPosition (Just Red) (Position 23) $ newBoard
+mcbNotSetRed    = setBoardPosition (Just Red) (Position 23) $ newBoard
+mcbSetBlack     = setMillClosed $ setBoardPosition (Just Black) (Position 23) $ newBoard
+mcbNotSetBlack  = setBoardPosition (Just Black) (Position 23) $ newBoard
+mcbSetN         = setMillClosed $ setBoardPosition (Nothing) (Position 23) $ newBoard
+mcbNotSetN      = setBoardPosition (Nothing) (Position 23) $ newBoard
+mcbSetHCRed     = setMillClosed $ setBoardHandCount 1 Red $ newBoard
+mcbNotSetHCRed  = setBoardHandCount 1 Red $ newBoard
+mcbSetHCBl      = setMillClosed $ setBoardHandCount 1 Black $ newBoard
+mcbNotSetHCBl   = setBoardHandCount 1 Black $ newBoard
+
+
 testsSimple = TestList [
             TestCase (assertEqual "num pieces black" 1 (getNumPlayerPieces Black simple)),
             TestCase (assertEqual "num pieces red"   3 (getNumPlayerPieces Red   simple)),
@@ -125,6 +137,23 @@ testsComplex = TestList [
             
             TestCase (assertEqual "free positions" c_free_pos (getFreePositions complex))
         ]
+
+testBoardBitsDisjunct = TestList [
+            TestCase (assertEqual "mill closed bit set red"       (Just Red)   (getBoardPosition (Position 23) mcbSetRed)),
+            TestCase (assertEqual "mill closed bit not set red"   (Just Red)   (getBoardPosition (Position 23) mcbNotSetRed)),
+
+            TestCase (assertEqual "mill closed bit set black"     (Just Black) (getBoardPosition (Position 23) mcbSetBlack)),
+            TestCase (assertEqual "mill closed bit not set black" (Just Black) (getBoardPosition (Position 23) mcbNotSetBlack)),
+
+            TestCase (assertEqual "mill closed bit set nothing"     (Nothing)  (getBoardPosition (Position 23) mcbSetN)),
+            TestCase (assertEqual "mill closed bit not set nothing" (Nothing)  (getBoardPosition (Position 23) mcbNotSetN)),
+
+            TestCase (assertEqual "mill closed bit set hc red"        1        (getBoardHandCount Red mcbSetHCRed)),
+            TestCase (assertEqual "mill closed bit not set hc red"    1        (getBoardHandCount Red mcbNotSetHCRed)),
+
+            TestCase (assertEqual "mill closed bit set hc black"      1        (getBoardHandCount Black mcbSetHCBl)),
+            TestCase (assertEqual "mill closed bit not set black"     1        (getBoardHandCount Black mcbNotSetHCBl))
+        ]
       
 testsEqualImplementation b p= TestList [
             TestCase (assertEqual ("getPlayerMills "++(show $ p))       (getPlayerMills' p b)           (getPlayerMills p b)),
@@ -139,6 +168,7 @@ appliedTestCases = TestList $ (\b p -> testsEqualImplementation b p) <$> randomB
 allTests = TestList[
         TestLabel "simple Board"         testsSimple,
         TestLabel "complex Board"        testsComplex,
+        TestLabel "board bits disjunct"  testBoardBitsDisjunct,
         TestLabel "equal Implementation" appliedTestCases
     ]
         
