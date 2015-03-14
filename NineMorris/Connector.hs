@@ -126,7 +126,7 @@ handleProlog gid gkind wishPlayer hdl = do
 
 -- | loop to handle the game phase.
 handleGamePhase :: Handle -> G.PlayerInfo -> IO ()
-handleGamePhase hdl player = fix $ \loop -> do  -- prevents memory leaks
+handleGamePhase hdl player = fix $ \loop -> do  -- fixpoint operator prevents memory leaks
     line <- getDebugLine hdl
     ret <- case parseGPSwitch $ line of
         G.GP_WAIT          -> putDebugStrLn hdl "OKWAIT" >> return True
@@ -134,7 +134,11 @@ handleGamePhase hdl player = fix $ \loop -> do  -- prevents memory leaks
         G.GP_GAMEOVER dat  -> gameOver hdl player dat
     if ret then loop else return ()
 
-movePhase :: Handle -> G.PlayerInfo -> Int -> IO Bool
+-- | handles move game phase
+movePhase :: Handle         -- socket handle
+          -> G.PlayerInfo   -- player data
+          -> Int            -- maximum think time (without delay)
+          -> IO Bool        -- always true
 movePhase hdl player time = do
     putStrLn $ "Begin MovePhase"
     putStrLn $ "Player:" ++ (show $ player)
@@ -176,7 +180,11 @@ movePhase hdl player time = do
     getDebugLine hdl >>= parseStatic "+ MOVEOK"
     return True
 
-gameOver :: Handle -> G.PlayerInfo -> (Maybe (Int,Text)) -> IO Bool
+-- | handle gameover game phase
+gameOver :: Handle 
+         -> G.PlayerInfo        -- player info of this player
+         -> (Maybe (Int,Text))  -- nothing if draw, player number and name of winner otherwise
+         -> IO Bool             -- always false to leave the game loop
 gameOver hdl player winner = do
     getPieceInfo hdl
     getDebugLine hdl >>= parseStatic "+ QUIT"

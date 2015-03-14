@@ -1,6 +1,8 @@
 -- | Unit testing file for the NineMorris AI
 --   plugged to the cabal test suite, connector adapted from
 --   https://robertmassaioli.wordpress.com/2013/12/02/connecting-haskell-hunit-tests-to-cabal-testsuite/
+--
+--   this test module can be loaded in GHCi and run via main
 -----------------------------------------------------------------
 module Tests.Unit_Tests where
 
@@ -10,7 +12,6 @@ module Tests.Unit_Tests where
 
 import qualified Distribution.TestSuite as TS
 import qualified Test.HUnit as HU
-
 -- -----
 import Test.HUnit
 import NineMorris.AI.Clever

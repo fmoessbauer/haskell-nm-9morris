@@ -23,8 +23,8 @@ startClient :: String   -- ^ gameid of choosen game
             -> String   -- ^ prefered player id or empty string
             -> IO ()
 startClient gid cnf pid = do
-  valgid <- return $! verifyGameId gid
-  player <- return $! verifyPlayerId pid
+  valgid <- return $! convertGameId gid
+  player <- return $! convertPlayerId pid
   config <- readConfigFile cnf
   performConnection valgid config player
 
@@ -35,13 +35,15 @@ readConfigFile path = do
   content <- readFile path
   return $ ConfigParser.getConfig content
 
-verifyGameId :: String -> G.Gameid
-verifyGameId gid = if (length $ gid) == G.gameIdLength
+-- | verifies and converts the given game id
+convertGameId :: String -> G.Gameid
+convertGameId gid = if (length $ gid) == G.gameIdLength
                       then gid
                       else throw G.GameIdNotValid
-                      
-verifyPlayerId :: String -> Maybe Int
-verifyPlayerId pl = 
+
+-- | verifies and converts the given player                  
+convertPlayerId :: String -> Maybe Int
+convertPlayerId pl = 
     case pl of
          ""   -> Nothing
          "0"  -> Just 0

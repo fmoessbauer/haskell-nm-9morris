@@ -1,14 +1,21 @@
 -----------------------------------------------------------------------------
--- 
--- Module      :  NineMorris
+-- |
+-- Module      :  Main
 -- Copyright   :  (c) Felix Moessbauer
 -- 
 -- Maintainer  :  felix.moessbauer@campus.lmu.de
 -- Stability   :  provisional
 -- Portability :  portable
 --
--- Main file of the Haskell-NM-9Morris Project
+-- Main file of the Haskell-NM-9Morris Project.
+-- Implemented for the FFP course held by Steffen Jost on the LMU Muenchen WS 2014/2015
+--
+-- Implementation of a nine men morris ai that communicates with the LMU NMN
+-- gameserver and handles all specified protocol cases. This implementation
+-- fullfills all usefull specifications given here
+-- TODO: insert NMN URL
 -----------------------------------------------------------------------------
+module Main (main) where
 
 import NineMorris.Client
 import qualified NineMorris.Globals as G
@@ -21,8 +28,10 @@ import GHC.Conc (getNumCapabilities, getNumProcessors)
 printHelp :: IO()
 printHelp = putStrLn "Usage: <gameid> (<path to config File>) (<playerId 0|1 >)"
 
+-- | Invoke this function to start the client
 main :: IO()
 main = do
+    -- set buffering to line buffering to prevent interleving threads in Console IO
     hSetBuffering stdout LineBuffering
     putStrLn $ "Starting Client Version " ++ showVersion version
 

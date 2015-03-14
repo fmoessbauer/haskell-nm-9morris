@@ -13,6 +13,8 @@
 -- not implemented:
 --
 -- no-capture moves if such move would lead to a instant win
+-- 
+-- for unit testing see the internal functions at "NineMorris.AI.Internal.Clever"
 -----------------------------------------------------------------------------
 
 module NineMorris.AI.Clever (

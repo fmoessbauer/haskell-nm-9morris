@@ -4,8 +4,11 @@
 
 name:                haskell-nm-9morris
 version:             0.1.0.0
--- synopsis:            
--- description:         
+synopsis:            LMU Informatik Systempraktikum - implementation of a nine men morris client ai 
+description:         Implementation of a nine men morris ai that communicates with the LMU NMN
+                     gameserver and handles all specified protocol cases. This implementation
+                     fullfills all usefull specifications given here
+                     TODO: insert NMN URL
 -- license:             
 -- license-file:        LICENSE
 author:              Felix Moessbauer

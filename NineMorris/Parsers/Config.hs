@@ -9,6 +9,15 @@
 -- Portability :  portable
 --
 -- This module parses a config file to a config record
+-- this parser is capable of comments beginning with a hash
+-- these comments can either be in a single line or inline
+-- spaces at any position except in key or value names are skipped.
+-- the delimiter between key and value must be the equal character,
+-- might be lead and followed by many spaces.
+-- LIMITATIONS:
+-- No space or comment chars in key or value,
+-- no quotes or escape characters to deal with this cases are possible
+-- see the example config file include in the package
 -----------------------------------------------------------------------------
 module NineMorris.Parsers.Config (getConfig) where
 
@@ -19,13 +28,16 @@ import Data.List as List
 import Control.Applicative
 import Control.Exception
 
+-- | key value pair
 type Store = (Text,Text)
 
+-- | skips comments and parses a single key value pair
 productParser :: Parser Store
 productParser =
      commentParser *> productParser                         -- parse comment line
  <|> parseKeyValue
 
+-- | parses all lines and deals with a comment as last line
 lineParser :: Parser [Store]
 lineParser = many $ productParser <* skipSpace <* (commentParser <|> return ()) <* (endOfLine <|> return ()) --endofline or not (eg endoffile)
 
@@ -38,6 +50,7 @@ commentParser = skipSpace *> ((char '#') *> skipWhile (not.isEndOfLine)) *> (end
 skipRestOfLine :: Char -> Bool
 skipRestOfLine c = (not $ (isEndOfLine) c || (isHorizontalSpace c || '#' == c))
 
+-- | parses a single key value pair that is not a comment
 parseKeyValue :: Parser Store
 parseKeyValue = do
   skipSpace
@@ -46,6 +59,7 @@ parseKeyValue = do
   value <- takeWhile1 skipRestOfLine
   return $ (key,value)
   
+-- | creates a config record from the parser results
 createConfig :: (Either String [Store]) -> G.Config
 createConfig (Right store) = G.Config {
                                G.hostname = getValue "hostname",

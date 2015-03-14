@@ -90,6 +90,18 @@ import Control.Exception (throw)
 import qualified Control.Parallel.Strategies as S
 import Data.Tree.Game_tree.Game_tree
 
+-- | game board which holds the following information in a 64 bit bitmask: 
+--   boards of both players,
+--   next board player,
+--   hand count of both players
+--   if a mill was closed in the last move
+--   
+--   Bitmask layout:
+--
+--   0  - 47 interleaved pieces with black beginning,
+--   48 - 51 handcount red,
+--   52 - 55 handcount black,
+--   56      mill closed bit
 newtype Board = Board Word64 deriving (Eq, Ord, Show)
 type Mask = Word64
 
@@ -117,7 +129,7 @@ data Move = FullMove {
     sndAction :: Maybe SecondAction}
     deriving (Eq, Show)
 
--- | which players are possible. I am Black
+-- | which players are possible. I am always black
 data Player = Red | Black deriving (Eq, Ord, Show)
 
 -- | node of the game tree consists of a board and a move that lead to the board
@@ -153,9 +165,9 @@ instance Game_tree Node where
             res = map (\move -> Node (playMove move board) (Just move)) moves
         in res
 
-{--------------------------------------------------------------------
+{- -------------------------------------------------------------------
   Constants
---------------------------------------------------------------------}
+------------------------------------------------------------------- -}
 
 -- | At which bit in the board integer the handcount is stored (a 4 bit word)
 handCountBitIdx :: Player -> Int
@@ -164,7 +176,7 @@ handCountBitIdx Black = 52
 
 -- | which bit holds the mill closed flag
 millClosedBitIdx :: Int
-millClosedBitIdx = 47
+millClosedBitIdx = 56 -- TODO: check this value
 
 -- | all board positions
 allPositions :: [Position]

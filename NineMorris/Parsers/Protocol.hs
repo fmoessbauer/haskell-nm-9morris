@@ -9,7 +9,10 @@
 -- Portability :  portable
 --
 -- This module provides functions to parse strings from the server
--- to different types
+-- to different types.
+-- the parser... functions are the actual parsers. The parse... functions
+-- are wrappers to get easier access to the parsed data in the protocol
+-- modules
 -----------------------------------------------------------------------------
 module NineMorris.Parsers.Protocol (
   parseWelcome,
@@ -142,10 +145,15 @@ parseMoveStoneData :: Text -> G.StoneInfo
 parseMoveStoneData str = normalizedParse $ parseOnly parserMoveStoneData str
 {- end move phase parsers-}
 
-parseStatic :: Text -> Text -> IO ()
+-- | parse a static text
+--   returns IO () if parser passes and exception if parser fails 
+parseStatic :: Text   -- ^ expected text
+            -> Text   -- ^ actual text
+            -> IO ()  -- ^ exception if parser fails
 parseStatic expected str = if expected == str then return () else throw $ G.InternalParserError ("No Parse: " ++ (unpack $ str))
 --(return $ (normalizedParse $ parseOnly (string expected) str)) >> return () -- bad implemenation
 
+-- | return the result if parser passes and exception if parser failes
 normalizedParse :: Either String a -> a
 normalizedParse (Right a) = a
 normalizedParse (Left str)  = throw $ G.InternalParserError str
