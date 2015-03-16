@@ -242,7 +242,7 @@ parseGamekindOk str gkind =
         else throw $ G.ProtocolError ("Gamekind not valid: " `append` gamekind)
 
 parseEndplayers :: Text -> IO ()
-parseEndplayers str = if str == "+ ENDPLAYERS" -- todo switch to parseStatic
+parseEndplayers str = if str == "+ ENDPLAYERS"
     then return ()
     else throw $ G.ProtocolError ("ENDPLAYERS expected, but: " `append` str)
 
