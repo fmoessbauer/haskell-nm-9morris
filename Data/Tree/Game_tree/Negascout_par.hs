@@ -1,7 +1,8 @@
 -- | Negascout and other (mostly alpha-beta pruning) algorithms for game-tree search
 -- Copyright 2009 Colin Adams
 --
--- This file is part of game-tree.
+-- This file is not part of game-tree. It is a parallelized version of the 
+-- file included in the game-tree package.
 --
 --  Game-tree is free software: you can redistribute it and/or modify
 --  it under the terms of the GNU General Public License as published by

@@ -39,7 +39,6 @@ where
 
 import NineMorris.AI.Internal.Clever
 
-import Data.Maybe
 import Data.Map (Map)
 import qualified Data.Map as Map
 import qualified Control.Parallel.Strategies as S
@@ -54,6 +53,8 @@ newBoard :: Board
 newBoard =
     setBoardHandCount 9 Red $ setBoardHandCount 9 Black $ Board 0
 
+{-
+-- | old implementation of the alpha beta search adapted from the simple ai
 aiMove' :: Int -> Map Board Float -> Board -> Maybe Move
 aiMove' depth bias board =
     let moves = legalMoves board
@@ -66,7 +67,7 @@ aiMove' depth bias board =
             then (Just m,v)
             else (if v>bv then (Just m,v) else b)) (Nothing,-1/0) moveVals
         in move `S.using` S.rseq
-        
+-}      
         
 -- | calculate the best legal move
 aiMove :: Int               -- ^ search depth

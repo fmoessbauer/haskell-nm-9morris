@@ -16,15 +16,18 @@
 -----------------------------------------------------------------------------
 module NineMorris.Parsers.Protocol (
   Version,
+  parseStatic,
+  -- * Prolog phase parsers
   parseWelcome,
   parseGamekind,
   parseGameName,
   parseTotalPlayer,
   parsePlayerInfo,
   parseMePlayerInfo,
+  -- * Phase control parsers
   parseGPSwitch,
+  -- * Move phase parsers
   parseMoveCapture,
-  parseStatic,
   parseMovePieces,
   parseMoveStoneData)
 where
@@ -66,6 +69,7 @@ parseGameName str = normalizedParse $ parseOnly ((string "+ ") *> (takeWhile1 (n
 parseTotalPlayer :: Text -> Int
 parseTotalPlayer str = normalizedParse $ parseOnly ((string "+ TOTAL ") *> (decimal)) str
 
+-- | see description at parsePlayerInfo
 parserPlayerInfo :: Parser G.PlayerInfo
 parserPlayerInfo = do
     string "+ "

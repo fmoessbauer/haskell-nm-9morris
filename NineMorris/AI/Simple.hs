@@ -1,5 +1,23 @@
 {-# LANGUAGE DeriveGeneric #-}
-{- AI based on this implementation https://hackage.haskell.org/package/hsqml-demo-morris -}
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  NineMorris.AI.Simple
+-- Copyright   :  (c) Felix Moessbauer
+-- 
+-- Maintainer  :  felix.moessbauer@campus.lmu.de
+-- Stability   :  provisional
+-- Portability :  portable
+--
+-- This module provides a simple nine men morris AI which is not capable of all 
+-- game roules. The AI is based on this implementation
+-- https://hackage.haskell.org/package/hsqml-demo-morris
+--
+-- It is only here to have a performance reference for the clever AI and to test
+-- that the alpha beta search algorithm provides equal results. In fact testing
+-- showed that some minor implementation mistakes in this AI might lead to different
+-- results.
+-- 
+-----------------------------------------------------------------------------
 
 module NineMorris.AI.Simple where
 

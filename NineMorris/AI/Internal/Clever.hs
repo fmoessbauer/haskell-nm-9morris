@@ -22,14 +22,14 @@ module NineMorris.AI.Internal.Clever (
     Player(..),
     Node(..),
     Mask,
-    -- constants
+    -- * Constants
     handCountBitIdx,
     millClosedBitIdx,
     allPositions,
     rawMillPos,
     millPositions,
     adjacencyMap,
-    -- board helper functions
+    -- * Board helper functions
     opponent,
     getBoardPosition,
     setBoardPosition,

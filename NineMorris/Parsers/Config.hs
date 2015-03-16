@@ -14,6 +14,7 @@
 -- spaces at any position except in key or value names are skipped.
 -- the delimiter between key and value must be the equal character,
 -- might be lead and followed by many spaces.
+--
 -- LIMITATIONS:
 -- No space or comment chars in key or value,
 -- no quotes or escape characters to deal with this cases are possible
@@ -44,6 +45,7 @@ lineParser = many $ productParser <* skipSpace <* (commentParser <|> return ()) 
 delimParser :: Parser ()
 delimParser = skipSpace *> (string "=") *> skipSpace
 
+-- | parses a single comment line (not inline comments)
 commentParser :: Parser ()
 commentParser = skipSpace *> ((char '#') *> skipWhile (not.isEndOfLine)) *> (endOfLine <|> return ())
 

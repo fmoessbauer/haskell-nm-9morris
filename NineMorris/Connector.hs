@@ -115,7 +115,7 @@ handleProlog gid gkind wishPlayer hdl = do
     when (not $ total == 2) (putStrLn $ "WARNING: This client is only made for a single opponent, not" ++ (show $ total-1))
 
     players <- replicateM (total-1) (getDebugLine hdl >>= (\str -> return $! parsePlayerInfo str))
-    putStrLn $ show $ players
+    putDebugStrLn $ show $ players
 
     -- recieve endplayers string
     getDebugLine hdl >>= parseEndplayers
@@ -152,7 +152,6 @@ movePhase hdl player time buffer = do
     empty <- isEmptyMVar buffer
     when (empty) (getAIMove time board buffer)
     playPartialMove hdl buffer
-    --
 
     -- manual play extension for debugging
     --move <- getLine

@@ -1,4 +1,15 @@
 {-# LANGUAGE OverloadedStrings #-}
+-----------------------------------------------------------------------------
+-- |
+-- Module      :  NineMorris.AI.SimpleInterface
+-- Copyright   :  (c) Felix Moessbauer
+-- 
+-- Maintainer  :  felix.moessbauer@campus.lmu.de
+-- Stability   :  provisional
+-- Portability :  portable
+--
+-- This module provides a unified interface to the simple AI
+-----------------------------------------------------------------------------
 module NineMorris.AI.SimpleInterface (
     convertMove,
     convertMoveList,

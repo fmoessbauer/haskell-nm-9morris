@@ -21,7 +21,7 @@ import Control.Exception
 import Data.Typeable
 import qualified Data.Map as Map
 
--- | reconnect if connection is lost
+-- | reconnect if connection is lost. Due to the game laws this functionality is not allowed and so currently not implemented
 allowReconnect :: Bool
 allowReconnect  = True
 
