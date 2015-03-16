@@ -99,7 +99,7 @@ handleProlog gid gkind wishPlayer hdl = do
     getDebugLine hdl >>= (\str -> parseGamekindOk str gkind)
 
     -- recieve Game name
-    gamename <- (getDebugLine hdl >>= (\str -> return $ parseGameName str))
+    gamename <- (getDebugLine hdl >>= (\str -> return $! parseGameName str))
 
     -- send player number
     let wishPid = case wishPlayer of
@@ -108,13 +108,13 @@ handleProlog gid gkind wishPlayer hdl = do
     putDebugStrLn hdl $ "PLAYER " `append` wishPid
 
     -- get player info
-    mePlayer <- getDebugLine hdl >>= (\str -> return $ parseMePlayerInfo str)
+    mePlayer <- getDebugLine hdl >>= (\str -> return $! parseMePlayerInfo str) -- be carefull: use strict form!!
 
-    total <- getDebugLine hdl >>= (\str -> return $ parseTotalPlayer str)
+    total <- getDebugLine hdl >>= (\str -> return $! parseTotalPlayer str)
     
     when (not $ total == 2) (putStrLn $ "WARNING: This client is only made for a single opponent, not" ++ (show $ total-1))
 
-    players <- replicateM (total-1) (getDebugLine hdl >>= (\str -> return $ parsePlayerInfo str))
+    players <- replicateM (total-1) (getDebugLine hdl >>= (\str -> return $! parsePlayerInfo str))
     putStrLn $ show $ players
 
     -- recieve endplayers string
@@ -126,20 +126,18 @@ handleProlog gid gkind wishPlayer hdl = do
 
 -- | loop to handle the game phase.
 handleGamePhase :: Handle -> G.PlayerInfo -> IO ()
-handleGamePhase hdl player = fix $ \loop -> do  -- fixpoint operator prevents memory leaks
-    line <- getDebugLine hdl
-    ret <- case parseGPSwitch $ line of
-        G.GP_WAIT          -> putDebugStrLn hdl "OKWAIT" >> return True
-        G.GP_MOVE time     -> movePhase hdl player time
-        G.GP_GAMEOVER dat  -> gameOver hdl player dat
-    if ret then loop else return ()
+handleGamePhase hdl player = do
+    moveBuffer <- newEmptyMVar  -- buffer to store multi moves
+    fix $ \loop -> do           -- prevents memory leaks
+        line <- getDebugLine hdl
+        ret <- case parseGPSwitch $ line of
+            G.GP_WAIT          -> putDebugStrLn hdl "OKWAIT" >> return True
+            G.GP_MOVE time     -> movePhase hdl player time moveBuffer
+            G.GP_GAMEOVER dat  -> gameOver hdl player dat
+        if ret then loop else return ()
 
--- | handles move game phase
-movePhase :: Handle         -- socket handle
-          -> G.PlayerInfo   -- player data
-          -> Int            -- maximum think time (without delay)
-          -> IO Bool        -- always true
-movePhase hdl player time = do
+movePhase :: Handle -> G.PlayerInfo -> Int -> (MVar [Text]) -> IO Bool
+movePhase hdl player time buffer = do
     putStrLn $ "Begin MovePhase"
     putStrLn $ "Player:" ++ (show $ player)
     
@@ -148,25 +146,12 @@ movePhase hdl player time = do
     let board = convertBoard player pieces
     putStrLn $ show $ board
 
-    --putStrLn $ show $ map (\n -> show $ AI.getBoardPosition (AI.Position n) board) [0..23]
-    --putStrLn $ show $ AI.getBoardHandCount AI.Red board
-
     putDebugStrLn hdl "THINKING"
-    --
-    moveStore <- newEmptyMVar
-    moveSave  <- newMVar (Nothing, 0)
-    --
     
-    tid <- forkIO $ handle timeoutHandler $ calculateIterativeMove (moveStore,moveSave) board 0
-    
-    Timer.oneShotTimer (do
-      throwTo tid G.TimeOutAI
-      (intMove,depth) <- takeMVar moveSave
-      --putStrLn $ show $ intMove
-      move <- return $ convertMove $ intMove
-      putDebugStrLn hdl ("PLAY " `append` move)
-      putStrLn $ "Calculated using search depth " ++ (show $ depth)
-      ) (msDelay $ fromIntegral (time - G.aiTimeoutBuffer))   
+    -- calculate move or play second part of already calculated move
+    empty <- isEmptyMVar buffer
+    when (empty) (getAIMove time board buffer)
+    playPartialMove hdl buffer
     --
 
     -- manual play extension for debugging
@@ -174,7 +159,6 @@ movePhase hdl player time = do
     --putDebugStrLn hdl $ pack $  "PLAY " ++ move
     
     getDebugLine hdl >>= parseStatic "+ OKTHINK"
-    
     -- Blocking until timer fires
     
     getDebugLine hdl >>= parseStatic "+ MOVEOK"
@@ -205,6 +189,36 @@ timeoutHandler :: G.MorrisException -> IO ()
 timeoutHandler G.TimeOutAI = return()               --putStrLn "Caught Timeout Exception"
 timeoutHandler _           = throw G.AiException    -- should never be reached
 
+playPartialMove :: Handle -> (MVar [Text]) -> IO()
+playPartialMove hdl buffer = do
+    moves <- takeMVar buffer
+    case moves of
+         (x:xs) -> do
+             putDebugStrLn hdl ("PLAY " `append` x)
+             if xs == []
+                then do
+                    return ()
+                else putMVar buffer xs
+         []     -> throw G.AiException  -- the MVar has to be empty instead
+    
+
+getAIMove :: Int -> Board -> (MVar [Text]) -> IO()
+getAIMove time board buffer = do
+    moveStore <- newEmptyMVar
+    moveSave  <- newMVar (Nothing, 0)
+    --
+    tid <- forkIO $ handle timeoutHandler $ calculateIterativeMove (moveStore,moveSave) board 0
+    
+    Timer.oneShotTimer (do
+      throwTo tid G.TimeOutAI
+      (intMove,depth) <- takeMVar moveSave
+      --putStrLn $ show $ intMove
+      move <- return $ convertMoveList $ intMove
+      putMVar buffer move
+      putStrLn $ "Calculated using search depth " ++ (show $ depth)
+      ) (msDelay $ fromIntegral (time - G.aiTimeoutBuffer))   
+    return ()
+    
 -- | retrieve the stones from server
 getPieceInfo :: Handle -> IO [G.StoneInfo]
 getPieceInfo hdl = do

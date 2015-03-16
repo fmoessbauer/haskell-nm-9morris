@@ -35,6 +35,7 @@ import Data.Text (unpack, take, length, last, Text)
 import Control.Applicative
 import Control.Exception
 
+-- | major, minor version
 type Version = (Int,Int)
 
 parserWelcome :: Parser Version

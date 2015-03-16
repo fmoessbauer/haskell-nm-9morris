@@ -1,3 +1,4 @@
+{-# LANGUAGE OverloadedStrings #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  NineMorris.AI.Clever
@@ -31,7 +32,8 @@ module NineMorris.AI.Clever (
     setBoardNextPlayer,
     setBoardPosition,
     reduceBoardHandCount,
-    aiMove
+    aiMove,
+    printBoard
     )
 where
 
@@ -41,7 +43,11 @@ import Data.Maybe
 import Data.Map (Map)
 import qualified Data.Map as Map
 import qualified Control.Parallel.Strategies as S
+import Data.Text (Text,append)
+import qualified Data.Text.IO as TIO
 import Data.Tree.Game_tree.Negascout_par
+
+import Debug.Trace
 
 -- | get new empty board
 newBoard :: Board
@@ -71,7 +77,7 @@ aiMove depth _ board =
     let
         (list,_) = principal_variation_search (Node board Nothing) (depth)
         (Node _ m) = head $! drop 1 $! list
-    in m  `S.using` S.rseq
+    in trace (show $ list) $ (m  `S.using` S.rseq)
     
 {-
 aiMoveIterative :: Game_tree a => Int -> Map Board Float -> Board -> [a] -> (Maybe Move, [a])
@@ -81,3 +87,37 @@ aiMoveIterative depth bias board history =
         (Node b m) = head $! drop 1 $! list
     in (m,[]) `S.using` S.rseq
 -}
+showBoard :: Board -> Text
+showBoard board =
+    let
+        posList = [
+                    0,3,6,
+                    8,10,12,
+                    16,17,18,
+                    21,22,23, 25,26,27,
+                    30,31,32,
+                    36,38,40,
+                    42,45,48
+                 ] :: [Int]
+        posMap = Map.fromList $ zipWith (\a b -> (a,b)) posList ([0..23]::[Int])
+    in
+        (foldl (\t x -> t `append` (symbolPos x posMap)) "" [0..48]) `append` "\n"
+    where
+        symbolPos :: Int -> (Map.Map Int Int) -> Text
+        symbolPos pos posMap = 
+            let
+                cap = case Map.lookup pos posMap of
+                            (Just x)  -> transform $ getBoardPosition (Position x) board
+                            (Nothing) -> " "
+                del = if pos `mod` 7 == 0
+                        then "\n"
+                        else  ""
+            in del `append` cap
+                 
+        transform :: Maybe Player -> Text
+        transform (Just Red)   = "o"
+        transform (Just Black) = "x"
+        transform _            = "-"
+        
+printBoard :: Board -> IO()
+printBoard b = TIO.putStr $ showBoard b
