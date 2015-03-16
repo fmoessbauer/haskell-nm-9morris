@@ -68,7 +68,9 @@ executable haskell-nm-9morris
 Test-Suite haskell-nm-9morris-tests
     type:               detailed-0.9
     test-module:        Tests.Unit_Tests
-    other-modules:      NineMorris.AI.Internal.Clever,
+    other-modules:      NineMorris.AI.Clever,
+                        NineMorris.AI.Internal.Clever,
+                        Data.Tree.Game_tree.Negascout_par
                         NineMorris.Globals
     default-language:   Haskell2010
     ghc-options:        -Wall -fno-warn-unused-do-bind -fhpc -threaded -O2 -with-rtsopts -N
