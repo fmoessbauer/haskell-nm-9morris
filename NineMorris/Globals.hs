@@ -72,6 +72,14 @@ toAiPositions     = Map.fromList $ zipWith (\a b -> (a,b)) positions ([0..23]::[
 toServerPositions :: Map.Map Int Text
 toServerPositions = Map.fromList $ zipWith (\a b -> (b,a)) positions ([0..23]::[Int])
 
+-- | default playerInfo record to prevent compiler warning when not initializing all fields
+defaultPlayerInfo :: PlayerInfo
+defaultPlayerInfo = PlayerInfo {
+        pid     = -1,
+        pname   = "",
+        pstatus = NOT_READY
+    }
+
 -- | flag which ai is used. Do not change!
 -- this seems to be redundant, but I guess that's the only way to achive low coupling
 aiType :: TypeOfAI

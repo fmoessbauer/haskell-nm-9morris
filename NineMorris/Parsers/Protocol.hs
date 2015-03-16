@@ -31,7 +31,7 @@ where
 
 import qualified NineMorris.Globals as G
 import Data.Attoparsec.Text
-import Data.Text (unpack, take, length, last, Text) 
+import Data.Text (unpack, snoc, Text) 
 import Control.Applicative
 import Control.Exception
 
@@ -47,30 +47,48 @@ parserWelcome = do
       (string  " accepting connections")
       return $ (mayor,minor)
 
+-- | parses the gameserver welcome message and returns the version
 parseWelcome :: Text -> Version
 parseWelcome str = normalizedParse $ parseOnly parserWelcome str
 
 parserGamekind :: Parser Text
 parserGamekind = (string "+ PLAYING ") *>  takeWhile1 (not.isEndOfLine)
 
+-- | parses the gamekind the server wants to play.
 parseGamekind :: Text -> Text
 parseGamekind str = normalizedParse $ parseOnly parserGamekind str
 
+-- | parses the name of the game
 parseGameName :: Text -> Text
 parseGameName str = normalizedParse $ parseOnly ((string "+ ") *> (takeWhile1 (not.isEndOfLine))) str
 
+-- | parses the number of players taking part in this game
 parseTotalPlayer :: Text -> Int
 parseTotalPlayer str = normalizedParse $ parseOnly ((string "+ TOTAL ") *> (decimal)) str
 
-parserPlayerInfo :: Parser (Int, Text)
+parserPlayerInfo :: Parser G.PlayerInfo
 parserPlayerInfo = do
-    (string "+ ")
-    -- parse player number
-    pnr <- decimal
+    string "+ "
     skipSpace
-    -- parse player name
-    pname <- takeText
-    return $ (pnr, pname)
+    pid <- decimal
+    skipSpace
+    parseRemaining (G.defaultPlayerInfo {G.pid = pid}) "" Nothing
+    where
+        parseRemaining :: G.PlayerInfo -> Text -> (Maybe Char) -> Parser G.PlayerInfo
+        parseRemaining rec akk c = do
+            sp <- anyChar
+            lp <- peekChar  -- lookahead if sp is last char
+            case lp of
+                 Nothing -> return rec {
+                        G.pname     = akk,
+                        G.pstatus   = case sp of
+                                           '1' -> G.READY
+                                           _   -> G.NOT_READY
+                    }
+                 Just _  -> case c of
+                                 Nothing -> parseRemaining rec akk (Just sp)
+                                 Just ca -> parseRemaining rec (akk `snoc` ca) (Just sp)
+                 
 
 parserMePlayerInfo :: Parser G.PlayerInfo
 parserMePlayerInfo = do
@@ -84,18 +102,15 @@ parserMePlayerInfo = do
         G.pstatus = G.READY
       }
 
--- very bad implemenation
--- TODO!!
+-- | parses a single player record, containing player id and name
+--   
+--   Some words to the weird looking implemenation:
+--   The string to be parsed looks like "+ YOU 0 My Name with spaces 0" where the last number
+--   after YOU is the pid and the last char is the player number. 
 parsePlayerInfo :: Text -> G.PlayerInfo
-parsePlayerInfo str = let (nr, name) = normalizedParse $ parseOnly parserPlayerInfo (Data.Text.take ((Data.Text.length $ str)-2) $ str)
-  in G.PlayerInfo{
-      G.pid     = nr,
-      G.pname   = name,
-      G.pstatus = if (Data.Text.last $ str) == '1'
-        then G.READY
-        else G.NOT_READY
-    }
-
+parsePlayerInfo str = normalizedParse $ parseOnly parserPlayerInfo str
+    
+-- | parses the client player information (that's me)
 parseMePlayerInfo :: Text -> G.PlayerInfo
 parseMePlayerInfo str = normalizedParse $ parseOnly parserMePlayerInfo str
 
@@ -105,6 +120,7 @@ parserGPSwitch =
   <|> ((string "+ MOVE ") *> (decimal >>= (\nr -> return $ G.GP_MOVE nr)))
   <|> ((string "+ GAMEOVER") *> skipSpace *> (parserGameOver <|> parserGameOverDraw))
 
+-- | parses the gamephase string
 parseGPSwitch :: Text -> G.GamePhase
 parseGPSwitch str = normalizedParse $ parseOnly parserGPSwitch str
 
@@ -119,6 +135,7 @@ parserGameOverDraw :: Parser G.GamePhase
 parserGameOverDraw = return $ G.GP_GAMEOVER Nothing
 
 {- move phase parsers -}
+-- | parses the stone capture information
 parseMoveCapture :: Text -> Int
 parseMoveCapture str = normalizedParse $ parseOnly ((string "+ CAPTURE ") *> (decimal)) str
 
@@ -130,6 +147,7 @@ parserMovePieces = do
     stones <- decimal
     return $ (players, stones)
 
+-- | parses the number of pieces (me and opponent)
 parseMovePieces :: Text -> (Int,Int)
 parseMovePieces str = normalizedParse $ parseOnly parserMovePieces str
 
@@ -143,6 +161,7 @@ parserMoveStoneData = do
     pos <- takeWhile1 (not.isHorizontalSpace)
     return G.StoneInfo {G.spid=pnr, G.snumber=stone, G.sposition=pos}
 
+-- | parses a single raw piece to a StoneInfo record
 parseMoveStoneData :: Text -> G.StoneInfo
 parseMoveStoneData str = normalizedParse $ parseOnly parserMoveStoneData str
 {- end move phase parsers-}
