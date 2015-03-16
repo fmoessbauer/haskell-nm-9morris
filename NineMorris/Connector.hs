@@ -115,7 +115,7 @@ handleProlog gid gkind wishPlayer hdl = do
     when (not $ total == 2) (putStrLn $ "WARNING: This client is only made for a single opponent, not" ++ (show $ total-1))
 
     players <- replicateM (total-1) (getDebugLine hdl >>= (\str -> return $! parsePlayerInfo str))
-    putDebugStrLn $ show $ players
+    putStrLn $ show $ players
 
     -- recieve endplayers string
     getDebugLine hdl >>= parseEndplayers
