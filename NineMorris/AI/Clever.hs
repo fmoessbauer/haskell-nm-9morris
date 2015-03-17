@@ -46,8 +46,6 @@ import Data.Text (Text,append)
 import qualified Data.Text.IO as TIO
 import Data.Tree.Game_tree.Negascout_par
 
-import Debug.Trace
-
 -- | get new empty board
 newBoard :: Board
 newBoard =
@@ -78,7 +76,7 @@ aiMove depth _ board =
     let
         (list,_) = principal_variation_search (Node board Nothing) (depth)
         (Node _ m) = head $! drop 1 $! list
-    in trace (show $ list) $ (m  `S.using` S.rseq)
+    in m  `S.using` S.rseq
     
 {-
 aiMoveIterative :: Game_tree a => Int -> Map Board Float -> Board -> [a] -> (Maybe Move, [a])

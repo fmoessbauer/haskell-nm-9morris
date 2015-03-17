@@ -226,7 +226,7 @@ getPieceInfo hdl = do
     pieces <- replicateM (cntPlayer*cntStones) (getDebugLine hdl >>= (\str -> return $ parseMoveStoneData str))
     getDebugLine hdl >>= parseStatic "+ ENDPIECELIST"
 
-    putStrLn $ show $ pieces
+    printDebugLn $ show $ pieces
     return pieces
 
 parseClientVersOk :: Text -> IO ()
@@ -258,4 +258,9 @@ putDebugStrLn :: Handle -> Text -> IO ()
 putDebugStrLn hdl str = do
     TextIO.hPutStrLn hdl str
     when G.isDebug $ putStrLn $ "DEBUG: "++(unpack $ str)
+    return ()
+    
+printDebugLn :: String -> IO ()
+printDebugLn str = do
+    when G.isDebug $ putStrLn $ "DEBUG: "++ str
     return ()

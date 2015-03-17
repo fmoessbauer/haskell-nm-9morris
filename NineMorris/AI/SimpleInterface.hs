@@ -44,7 +44,7 @@ convertSecondAction :: AI.SecondAction -> Text
 convertSecondAction (AI.Take pos) = convertToServerPos pos
 
 convertSecondActionList :: AI.SecondAction -> [Text]
-convertSecondActionList (AI.Take pos) = map convertToServerPos pos
+convertSecondActionList (AI.Take pos) = map convertToServerPos [pos]
 
 convertMoveList :: Maybe AI.Move -> [Text]
 convertMoveList Nothing = throw G.AiException
