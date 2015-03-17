@@ -11,6 +11,7 @@
 -- This module provides a unified interface to the simple AI
 -----------------------------------------------------------------------------
 module NineMorris.AI.SimpleInterface (
+    AI.Board(..),
     convertMove,
     convertMoveList,
     convertBoard,
