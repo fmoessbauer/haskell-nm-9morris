@@ -8,7 +8,7 @@ synopsis:            LMU Informatik Systempraktikum - implementation of a nine m
 description:         Implementation of a nine men morris ai that communicates with the LMU NMN
                      gameserver and handles all specified protocol cases. This implementation
                      fullfills all usefull specifications given here:
-                     http://www.nm.ifi.lmu.de/teaching/Praktika/2014ws/sysprak/
+                     @http://www.nm.ifi.lmu.de/teaching/Praktika/2014ws/sysprak/@
 -- license:             
 -- license-file:        LICENSE
 author:              Felix Moessbauer
@@ -19,6 +19,9 @@ build-type:          Simple
 extra-source-files:  README
 cabal-version:       >=1.10
 data-files:          config.ini
+source-repository head
+  type:     git
+  location: https://gitlab.cip.ifi.lmu.de/moessbauer/haskell-nm-9morris
 
 Flag Debug
   Description: Enable debug support
