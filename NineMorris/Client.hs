@@ -26,7 +26,7 @@ startClient gid cnf pid = do
   valgid <- return $! convertGameId gid
   player <- return $! convertPlayerId pid
   config <- readConfigFile cnf
-  performConnection valgid config player
+  catch (performConnection valgid config player) (expHandler)
 
 -- | Method to parse a config file.
 readConfigFile :: String        -- ^ file path
@@ -49,3 +49,6 @@ convertPlayerId pl =
          "0"  -> Just 0
          "1"  -> Just 1
          _    -> throw G.PlayerIdNotValid
+         
+expHandler :: G.MorrisException -> IO ()
+expHandler e = putStrLn $ "[FATAL ERROR]: " ++ (show e)

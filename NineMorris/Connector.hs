@@ -47,7 +47,7 @@ performConnection gid cnf@Config{hostname, port, gamekind} player = do
 
     -- create socket
     let hints = defaultHints { addrFlags = [AI_CANONNAME], addrSocketType = Stream}
-    addrInfos <- getAddrInfo (Just hints) (Just (unpack $ hostname)) (Just $ show $ port)
+    addrInfos <- catch (getAddrInfo (Just hints) (Just (unpack $ hostname)) (Just $ show $ port)) (noDNSHandler)
 
     -- debug dns request
     --putStrLn $ show $ addrInfos
@@ -112,7 +112,7 @@ handleProlog gid gkind wishPlayer hdl = do
 
     total <- getDebugLine hdl >>= (\str -> return $! parseTotalPlayer str)
     
-    when (not $ total == 2) (putStrLn $ "WARNING: This client is only made for a single opponent, not" ++ (show $ total-1))
+    when (not $ total == 2) (putStrLn $ "[WARNING]: This client is only made for a single opponent, not" ++ (show $ total-1))
 
     players <- replicateM (total-1) (getDebugLine hdl >>= (\str -> return $! parsePlayerInfo str))
     putStrLn $ show $ players
@@ -188,6 +188,9 @@ timeoutHandler :: G.MorrisException -> IO ()
 timeoutHandler G.TimeOutAI = return()               --putStrLn "Caught Timeout Exception"
 timeoutHandler _           = throw G.AiException    -- should never be reached
 
+noDNSHandler :: IOException -> IO [addrInfos]
+noDNSHandler e = throw (G.ProtocolError $ pack $ "Server not found: " ++ (show e))
+
 playPartialMove :: Handle -> (MVar [Text]) -> IO()
 playPartialMove hdl buffer = do
     moves <- takeMVar buffer
@@ -250,17 +253,17 @@ parseEndplayers str = if str == "+ ENDPLAYERS"
 getDebugLine :: Handle -> IO Text
 getDebugLine hdl = do
     line <- TextIO.hGetLine hdl
-    when G.isDebug $ putStrLn $ "DEBUG: "++(show $ line)
+    when G.isDebug $ putStrLn $ "[DEBUG]: "++(show $ line)
     return line
 
 -- | write line to socket and if in debug mode, print this line
 putDebugStrLn :: Handle -> Text -> IO ()
 putDebugStrLn hdl str = do
     TextIO.hPutStrLn hdl str
-    when G.isDebug $ putStrLn $ "DEBUG: "++(unpack $ str)
+    when G.isDebug $ putStrLn $ "[DEBUG]: "++(unpack $ str)
     return ()
     
 printDebugLn :: String -> IO ()
 printDebugLn str = do
-    when G.isDebug $ putStrLn $ "DEBUG: "++ str
+    when G.isDebug $ putStrLn $ "[DEBUG]: "++ str
     return ()
