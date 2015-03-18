@@ -238,11 +238,16 @@ parseClientVersOk str = if str == "+ Client version accepted - please send Game-
     else throw $ G.ProtocolError "Client version not ok"
 
 parseGamekindOk :: Text -> Text -> IO ()
-parseGamekindOk str gkind = 
-    let gamekind = parseGamekind str
-    in if (gamekind == gkind)
-        then return ()
-        else throw $ G.ProtocolError ("Gamekind not valid: " `append` gamekind)
+parseGamekindOk str gkind = do
+    catch (checkGameKind) (lostConHandler)
+    where
+        checkGameKind = 
+            let gamekind = parseGamekind str
+            in if (gamekind == gkind)
+                then return ()
+                else throw $ G.ProtocolError ("Gamekind not valid: " `append` gamekind)
+        lostConHandler :: G.MorrisException -> IO ()
+        lostConHandler = throw $ G.ProtocolError ("Gameid not valid")
 
 parseEndplayers :: Text -> IO ()
 parseEndplayers str = if str == "+ ENDPLAYERS"

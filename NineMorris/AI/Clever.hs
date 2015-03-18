@@ -86,6 +86,9 @@ aiMoveIterative depth bias board history =
         (Node b m) = head $! drop 1 $! list
     in (m,[]) `S.using` S.rseq
 -}
+
+-- | function to print the board for debugging purpuse. This function is implemented here, because
+--   every ai is responsible for the internal board representation
 showBoard :: Board -> Text
 showBoard board =
     let
