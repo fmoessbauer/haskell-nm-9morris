@@ -31,8 +31,15 @@ TEST:
 Call 'cabal test' to test the AI integrity. If you get a "cabal prelude: no parse" error, try to remove all test
 reports and delete the dist directory. This is a cabal bug :(
 
+PROFILING:
+If you want to profile, you need to install the profiling version of all libraries. See https://nikita-volkov.github.io/profiling-cabal-projects/
+for more information
 
 COMMON MISTAKES:
+
+cabal-install fails because the profiling versions of the libaries are not installed:
+If you do not need profiling, delete or rename the file cabal.config. Otherwise you have to install the profiling versions with the
+reinstall command. See PROFILING
 
 No Connection:
 Be aware, the gameserver is only accessable inside the MWN (Münchner Wissenschaftsnetz). If the client cannot
