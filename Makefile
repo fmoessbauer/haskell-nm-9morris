@@ -3,7 +3,7 @@
 # better use the cabal buildfile
 
 CC = ghc
-CFLAGS = -O2
+CFLAGS = -Wall -fno-warn-unused-do-bind -threaded -O2 -auto-all -debug -rtsopts -with-rtsopts -N
 SOURCES = ./NineMorris/main.hs
 BUILDDIR = dist
 APPNAME = client
