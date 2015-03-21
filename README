@@ -24,7 +24,7 @@ RUN:
 Call 'cabal run' to start the client. If no or wrong arguments are passed to the program, it shows a help message.
 To start the client with arguments the best way is to do it this way:
     'cabal run -- arg1 arg2 ...'
-The double dash is to seperate flags sent do cabal and program arguments. If you want to send flags to cabal,
+The double dash is to seperate flags sent to cabal and program arguments. If you want to send flags to cabal,
 place these between 'run' and the double dash: 'cabal run -v -- arg1 arg2 ...'
 
 TEST:
@@ -34,6 +34,7 @@ reports and delete the dist directory. This is a cabal bug :(
 PROFILING:
 If you want to profile, you need to install the profiling version of all libraries. See https://nikita-volkov.github.io/profiling-cabal-projects/
 for more information
+
 
 COMMON MISTAKES:
 
@@ -48,6 +49,6 @@ connect, check your VPN Connection
 Connection gets interrupted:
 If your internet connection is very slow or has a high latency time, the server might close the connection
 in the think phase, because it does not get a response in the expected time window. To check this problem
-ping the gameserver and check the round trip delay.
+ping the gameserver and check the round trip time.
 
 If you cannot fix this problem, increase the 'aiTimeoutBuffer' set in Globals.hs
