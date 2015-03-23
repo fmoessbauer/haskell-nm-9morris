@@ -103,6 +103,7 @@ import Data.Tree.Game_tree.Game_tree
 --   48 - 51 handcount red,
 --   52 - 55 handcount black,
 --   56      mill closed bit
+--   63      next player bit
 newtype Board = Board Word64 deriving (Eq, Ord, Show)
 type Mask = Word64
 
