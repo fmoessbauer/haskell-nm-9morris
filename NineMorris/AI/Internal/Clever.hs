@@ -74,7 +74,7 @@ module NineMorris.AI.Internal.Clever (
     ) 
 where
 
-import Control.DeepSeq()
+import Control.DeepSeq
 import Control.Applicative ((<$>), (<*>)) -- only for permute2
 import GHC.Generics
 import Data.Word
@@ -104,8 +104,10 @@ import Data.Tree.Game_tree.Game_tree
 --   52 - 55 handcount black,
 --   56      mill closed bit
 --   63      next player bit
-newtype Board = Board Word64 deriving (Eq, Ord, Show)
+newtype Board = Board Word64 deriving (Eq, Ord, Show, Generic)
 type Mask = Word64
+
+instance S.NFData Board
 
 newtype Position = Position Int deriving (Eq, Ord, Show, Generic)
 
@@ -144,7 +146,10 @@ instance Ord Move where
         | (isNothing a) && (isJust b) = LT
         | otherwise                   = EQ
 
-instance S.NFData  Node
+-- custom NFData Instance because Generic fails
+instance S.NFData  Node where
+    rnf (Node board _) = rnf board
+
 instance Game_tree Node where
     is_terminal (Node board _) = loss $ getBoardNextPlayer board -- (loss $ Red) || (loss $ Black)
         where

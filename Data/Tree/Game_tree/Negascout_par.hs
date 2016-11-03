@@ -201,12 +201,12 @@ parallelize f node depth =
           then first
           else best
     where
-        getBest :: Game_tree a => ([a], Int) -> ([a], Int) -> ([a], Int)
+        getBest :: ([a], Int) -> ([a], Int) -> ([a], Int)
         getBest (bestn, bestv) (n, v) = 
             if -v > bestv    -- v has to be inverted, because level 1 is a minimising level
                then (n, -v)
                else (bestn, bestv)
-        inject :: Game_tree a => a -> ([a], Int) -> ([a], Int)
+        inject ::a -> ([a], Int) -> ([a], Int)
         inject a (n,v) = (a:n,v)
         
         -- comp :: ([a], Int) -> ([a], Int) -> Ordering
