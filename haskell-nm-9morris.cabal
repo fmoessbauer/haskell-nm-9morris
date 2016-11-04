@@ -41,7 +41,7 @@ Flag Functionalai
 executable haskell-nm-9morris
   main-is:             NineMorris/main.hs
   -- other-modules:       
-  build-depends:       base >=4.6 && <4.8,
+  build-depends:       base >=4.6 && <5.0,
                        network,
                        directory,
                        text,
